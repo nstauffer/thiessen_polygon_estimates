@@ -12,7 +12,7 @@ thiessen_polygons_gen <- function(centroids,
   
   # Sanitization
   if (!("sf" %in% class(centroids))) {
-    stop("points must be an sf points object")
+    stop("centroids must be an sf points object")
   } else if (!all(sf::st_geometry_type(centroids) %in% c("POINT"))){
     stop("centroids must be an sf points object")
   }
@@ -37,7 +37,7 @@ thiessen_polygons_gen <- function(centroids,
                               crs = aea_proj)
   } else {
     # This just forces the polygons into the same projection as the centroids
-    points_crs <- sf::st_crs(centroids)
+    centroids_crs <- sf::st_crs(centroids)
     frame <- sf::st_transform(frame,
                               crs = points_crs)
   }

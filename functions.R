@@ -93,7 +93,7 @@ thiessen_polygons_gen <- function(centroids,
   thiessen_polygons_clipped$polygon_unique_id <- 1:nrow(thiessen_polygons_clipped)
   
   # Add in the areas for the polygons
-  thiessen_polygons_clipped$area_m2 <- sf::st_area(x = thiessen_polygons_clipped)
+  thiessen_polygons_clipped$area_m2 <- as.vector(sf::st_area(x = thiessen_polygons_clipped))
   
   # Return the polygons
   return(thiessen_polygons_clipped)

@@ -1,6 +1,6 @@
 library(ggplot2)
 
-
+#### THIESSEN POLYGONS ####
 aea_proj <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
 
 # Load in sample frame
@@ -220,4 +220,66 @@ for (variable in names(polygon)) {
 output <- concave_polygon[, names(polygon)]
 
 ggplot() +
+  geom_sf(data = output)
+
+
+
+#### SAMPLING POINTS ####
+source("C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/functions.R")
+projection <- sp::CRS("+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs")
+seed_number <- 69
+
+sample_type <- "simple"
+# sample_type <- "balanced"
+# sample_type <- "cluster"
+frame <- aoi_gen(xmin = 0,
+                 xmax = 100,
+                 ymin = 0,
+                 ymax = 100,
+                 n_vertices = 5,
+                 convex_hull = TRUE,
+                 seed_number = 420,
+                 projection = projection)
+n_points <- 50
+seed_number <- 666
+
+# do the correct kind of sample draw
+points <- switch(sample_type,
+                 "simple" = {
+                   set.seed(seed_number)
+                   sp::spsample(x = methods::as(frame, "Spatial"),
+                                n = n_points,
+                                type = "random")
+                 },
+                 "balanced" = {
+                   design <- list(None = list(panel = c("1" = n_points),
+                                                     seltype = "Equal",
+                                                     over = 0))
+                   set.seed(seed_number)
+                   points <- spsurvey::grts(design = design,
+                                            DesignID = "",
+                                            type.frame = "area",
+                                            src.frame = "sf.object",
+                                            sf.object = frame,
+                                            shapefile = FALSE)
+                 },
+                 "cluster" = {
+                   set.seed(seed_number)
+
+                 })
+
+# Convert from SPDF to sf
+points <- methods::as(points, "sf")
+
+points$sample_id <- paste0("sample_",
+                           seed_number,
+                           "-",
+                           1:nrow(points))
+
+points$sample_seed <- seed_number
+
+output <- points[, c("sample_id", "sample_seed")]
+
+ggplot() +
+  geom_sf(data = frame) +
   geom_sf(data = output)

@@ -2,14 +2,11 @@
 #' @description Generate Thiessen/Voronoi polygons for a set of points and clip the results using a set of polygons
 #' @param centroids An sf points object. These points are used as centroids for the Thiessen/Voronoi polygons.
 #' @param frame An sf polygon or multipolygon object. This is the clipping boundary which will be applied to the otherise "infinite" Thiessen/Voronoi polygons.
-#' @param points Optional sf point object. If provided, then the Thiessen polygons will be redrawn with new random seeds until each contains at least \code{points_min} of these points. Defaults to \code{NULL}.
-#' @param points_min Optional numeric value. If \code{points} is not \code{NULL} then this is the minimum number of points that each Thiessen polygon will contain. Defaults to \code{2}.
 #' @param use_albers Logical. If \code{TRUE} then \code{centroids} and \code{frame} will be reprojected into Albers Equal Area (AEA) and the output will be in AEA. If \code{FALSE} then \code{frame} will be reprojected to match the coordinate reference ssytem (CRS) of \code{centroids} and the output will be in that CRS. CRSs using decimal degrees will throw errors or warnings. Defaults to \code{TRUE}.
 #' @return An sf object composed of polygon or multipolygon geometry
-thiessen_polygons_gen <- function(centroids,
+thiessen_polygons_gen_fixed <- function(centroids,
                                   frame,
-                                  points = NULL,
-                                  points_min = 2,
+                                  seed_number = 420,
                                   use_albers = TRUE){
   # Define Alber's Equal Area CRS
   aea_proj <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
@@ -25,44 +22,25 @@ thiessen_polygons_gen <- function(centroids,
   } else if (!all(sf::st_geometry_type(frame) %in% c("POLYGON", "MULTIPOLYGON"))){
     stop("frame must be an sf polygon object")
   }
-  if (!is.null(points)) {
-    if (!("sf" %in% class(points))) {
-      stop("points must be an sf points object")
-    } else if (!all(sf::st_geometry_type(points) %in% c("POINT"))){
-      stop("pointss must be an sf points object")
-    }
-  }
-  
+
   # Remove any Z dimension
   # It screws with the process and is irrelevant
   centroids <- sf::st_zm(centroids,
                          drop = TRUE)
   frame <- sf::st_zm(frame,
                      drop = TRUE)
-  if (!is.null(points)) {
-    points <- sf::st_zm(points,
-                        drop = TRUE)
-  }
-  
+
   # Reproject as necessary
   if (use_albers) {
     centroids <- sf::st_transform(x = centroids,
                                   crs = aea_proj)
     frame <- sf::st_transform(x = frame,
                               crs = aea_proj)
-    if (!is.null(points)) {
-      points <- sf::st_transform(x = points,
-                                 crs = aea_proj)
-    }
   } else {
     # This just forces the polygons into the same projection as the centroids
     centroids_crs <- sf::st_crs(centroids)
     frame <- sf::st_transform(frame,
-                              crs = points_crs)
-    if (!is.null(points)) {
-      points <- sf::st_transform(x = points,
-                                 crs = centroids_crs)
-    }
+                              crs = centroids_crs)
   }
   
   # Draw Thiessen polygons
@@ -95,7 +73,6 @@ thiessen_polygons_gen <- function(centroids,
   # Add in the areas for the polygons
   thiessen_polygons_clipped$area_m2 <- as.vector(sf::st_area(x = thiessen_polygons_clipped))
   
-  # Return the polygons
   return(thiessen_polygons_clipped)
 }
 

@@ -76,6 +76,158 @@ thiessen_polygons_gen_fixed <- function(centroids,
   return(thiessen_polygons_clipped)
 }
 
+#' Create Thiessen/Voronoi polygons from a set of points and bounding polygons
+#' @description Generate Thiessen/Voronoi polygons for a set of points and clip the results using a set of polygons
+#' @param frame An sf polygon or multipolygon object. This is the clipping boundary which will be applied to the otherise "infinite" Thiessen/Voronoi polygons.
+#' @param n_polygons Numeric value. The number of Thiessen polygons to draw within the frame.
+#' @param points Optional sf point object. If provided, then the Thiessen polygons will be redrawn with new random seeds until each contains at least \code{points_min} of these points. Defaults to \code{NULL}.
+#' @param points_min Optional numeric value. If \code{points} is not \code{NULL} then this is the minimum number of points that each Thiessen polygon will contain. Defaults to \code{2}.
+#' @param seed_number Optional numeric value. The seed number to use for generating the polygon centroids. A random seed will be used if this is \code{NULL}. Defaults to \code{NULL}.
+#' @param seed_increment Optional numeric value. If attempting to produce polygons with \code{points_min} points from \code{points} in each polygon, this is the step to increment \code{seed_number} by on each attempt. Defaults to \code{100000}.
+#' @param use_albers Logical. If \code{TRUE} then \code{centroids} and \code{frame} will be reprojected into Albers Equal Area (AEA) and the output will be in AEA. If \code{FALSE} then everything will be reprojected to match the coordinate reference system (CRS) of \code{frame} and the output will be in that CRS. CRSs using decimal degrees will throw errors or warnings. Defaults to \code{TRUE}.
+#' @param verbose Logical. If \code{TRUE} then the function will return diagnostic messages as it runs. Defaults to \code(FALSE}.)
+#' @return An sf object composed of polygon or multipolygon geometry
+thiessen_polygons_gen_random <- function(frame,
+                                         n_polygons,
+                                         points = NULL,
+                                         points_min = 2,
+                                         seed_number = NULL,
+                                         seed_increment = 100000,
+                                         use_albers = TRUE,
+                                         verbose = FALSE){
+  # Define Alber's Equal Area CRS
+  projection <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
+  
+  # Sanitization
+  if (!("sf" %in% class(frame))) {
+    stop("frame must be an sf polygon object")
+  } else if (!all(sf::st_geometry_type(frame) %in% c("POLYGON", "MULTIPOLYGON"))){
+    stop("frame must be an sf polygon object")
+  }
+  if (!(class(n_polygons) %in% c("numeric", "integer")) | length(n_polygons) > 1) {
+    stop("n_points must be a single numeric value")
+  }
+  if (!is.null(points)) {
+    if (!("sf" %in% class(points))) {
+      stop("points must be an sf points object")
+    } else if (!all(sf::st_geometry_type(points) %in% c("POINT"))){
+      stop("points must be an sf points object")
+    }
+  }
+  if (!is.null(seed_number)) {
+    if (!(class(seed_number) %in% c("numeric", "integer")) | length(seed_number) > 1) {
+      stop("seed_number must be a single numeric value")
+    }
+  } else {
+    seed_number <- sample(x = 1:9999999,
+                          size = 1)
+  }
+  
+  # Remove any Z dimension
+  # It screws with the process and is irrelevant
+  frame <- sf::st_zm(frame,
+                     drop = TRUE)
+  if (!is.null(points)) {
+    points <- sf::st_zm(points,
+                        drop = TRUE)
+  }
+  
+  # Reproject as necessary
+  if (use_albers) {
+    frame <- sf::st_transform(x = frame,
+                              crs = projection)
+    if (!is.null(points)) {
+      points <- sf::st_transform(x = points,
+                                 crs = projection)
+    }
+  } else {
+    # This just forces the polygons into the same projection as the centroids
+    projection <- sf::st_crs(frame)
+    if (!is.null(points)) {
+      points <- sf::st_transform(x = points,
+                                 crs = projection)
+    }
+  }
+  
+  # Draw centroids
+  centroids <- points_gen(frame = frame,
+                          sample_type = "simple",
+                          n_points = n_polygons,
+                          seed_number = seed_number,
+                          projection = projection)
+  
+  # Draw Thiessen polygons
+  thiessen_polygons <- thiessen_polygons_gen_fixed(centroids = centroids,
+                                                   frame = frame,
+                                                   seed_number = seed_number,
+                                                   use_albers = FALSE)
+  
+  # Get the final variables in there
+  thiessen_polygons$tpoly_seed <- seed_number
+  thiessen_polygons$tpoly_id <- paste0("tpoly_",
+                                       thiessen_polygons$tpoly_seed,
+                                       "-",
+                                       thiessen_polygons$polygon_unique_id)
+  
+  if (!is.null(points)) {
+    ## Check that polygons contain enough points
+    points_attributed <- sf::st_join(x = points,
+                                     y = thiessen_polygons[, c("tpoly_id")])
+    
+    tpoly_summary <- data.frame(tpoly_id = names(table(points_attributed$tpoly_id)),
+                                n_points = as.vector(table(points_attributed$tpoly_id)),
+                                stringsAsFactors = FALSE)
+    
+    while (!all(tpoly_summary[["n_points"]] >= points_min)) {
+      seed_number <- seed_number + seed_increment
+      if (verbose) {
+        message(paste("Not enough points in all thiessen polygons. Drawing new centroids with seed", seed_number))
+      }
+      
+      # Draw centroids
+      centroids <- points_gen(frame = frame,
+                              sample_type = "simple",
+                              n_points = n_polygons,
+                              seed_number = seed_number,
+                              projection = projection)
+      
+      thiessen_polygons <- thiessen_polygons_gen_fixed(centroids = centroids,
+                                                       frame = frame,
+                                                       seed_number = seed_number,
+                                                       use_albers = FALSE)
+      
+      
+      # Get the final variables in there
+      thiessen_polygons$tpoly_seed <- seed_number
+      thiessen_polygons$tpoly_id <- paste0("tpoly_",
+                                           thiessen_polygons$tpoly_seed,
+                                           "-",
+                                           thiessen_polygons$polygon_unique_id)
+      
+      ## Check that polygons contain enough points
+      points_attributed <- sf::st_join(x = points,
+                                       y = thiessen_polygons[, c("tpoly_id")])
+      
+      tpoly_summary <- data.frame(tpoly_id = names(table(points_attributed$tpoly_id)),
+                                  n_points = as.vector(table(points_attributed$tpoly_id)),
+                                  stringsAsFactors = FALSE)
+    }
+    
+    # Add in the point counts while we're here
+    output <- merge(thiessen_polygons,
+                    tpoly_summary,
+                    by = "tpoly_id")
+    
+    # And why not weights also
+    output$weight <- output$area_m2 / output$n_points
+    
+    return(output)
+  } else {
+    # Return the polygons
+    return(thiessen_polygons_clipped[, c("tpoly_id", "tpoly_seed")])
+  }
+}
+
 #' Generate a landscape raster with categorical values
 #' @param categories Numeric vector. The possible categories (numeric values) that the raster cells will have.
 #' @param ncol Numeric value. The number of columns the raster will have.
@@ -448,7 +600,6 @@ concavify <- function(polygon,
 }
 
 
-#### GENERATE POINTS ####
 #' Generate points within a given frame by one of three methods
 #' @param frame sf polygon object. The sample frame within which points will be drawn. This should probably be a single simple polygon.
 #' @param sample_type Character string. The method to draw points by. Valid values are \code{"simple"} (simple random), \code{"balanced"} (spatially-balanced random using GRTS), and \code{"cluster} (two-stage clustered). Defaults to \code{"simple"}.

@@ -2,3 +2,6 @@
 .Rhistory
 .RData
 .Ruserdata
+*.tmp
+doc/~$data_formats_20210616.pptx
+doc/~$oposed_work_outline.docx

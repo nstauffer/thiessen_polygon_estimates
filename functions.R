@@ -1,19 +1,19 @@
 #' Create Thiessen/Voronoi polygons from a set of points and bounding polygons
 #' @description Generate Thiessen/Voronoi polygons for a set of points and clip the results using a set of polygons
-#' @param points An sf points object. These points are used as centroids for the Thiessen/Voronoi polygons.
+#' @param centroids An sf points object. These points are used as centroids for the Thiessen/Voronoi polygons.
 #' @param frame An sf polygon or multipolygon object. This is the clipping boundary which will be applied to the otherise "infinite" Thiessen/Voronoi polygons.
-#' @param use_albers Logical. If \code{TRUE} then \code{points} and \code{frame} will be reprojected into Albers Equal Area (AEA) and the output will be in AEA. If \code{FALSE} then \code{frame} will be reprojected to match the coordinate reference ssytem (CRS) of \code{points} and the output will be in that CRS. CRSs using decimal degrees will throw errors or warnings. Defaults to \code{TRUE}.
+#' @param use_albers Logical. If \code{TRUE} then \code{centroids} and \code{frame} will be reprojected into Albers Equal Area (AEA) and the output will be in AEA. If \code{FALSE} then \code{frame} will be reprojected to match the coordinate reference ssytem (CRS) of \code{centroids} and the output will be in that CRS. CRSs using decimal degrees will throw errors or warnings. Defaults to \code{TRUE}.
 #' @return An sf object composed of polygon or multipolygon geometry
-thiessen_polygons_gen <- function(points,
+thiessen_polygons_gen <- function(centroids,
                               frame,
                               use_albers = TRUE){
   # Define Alber's Equal Area CRS
   aea_proj <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
   
   # Sanitization
-  if (!("sf" %in% class(points))) {
+  if (!("sf" %in% class(centroids))) {
     stop("points must be an sf points object")
-  } else if (!all(sf::st_geometry_type(points) %in% c("POINT"))){
+  } else if (!all(sf::st_geometry_type(centroids) %in% c("POINT"))){
     stop("points must be an sf points object")
   }
   if (!("sf" %in% class(frame))) {
@@ -24,20 +24,20 @@ thiessen_polygons_gen <- function(points,
   
   # Remove any Z dimension
   # It screws with the process and is irrelevant
-  points <- sf::st_zm(points,
+  centroids <- sf::st_zm(centroids,
                       drop = TRUE)
   frame <- sf::st_zm(frame,
                      drop = TRUE)
   
   # Reproject as necessary
   if (use_albers) {
-    points <- sf::st_transform(x = points,
+    centroids <- sf::st_transform(x = centroids,
                                crs = aea_proj)
     frame <- sf::st_transform(x = frame,
                               crs = aea_proj)
   } else {
     # This just forces the polygons into the same projection as the points
-    points_crs <- sf::st_crs(points)
+    points_crs <- sf::st_crs(centroids)
     frame <- sf::st_transform(frame,
                               crs = points_crs)
   }
@@ -45,7 +45,7 @@ thiessen_polygons_gen <- function(points,
   # Draw Thiessen polygons
   # Here's where it gets weird
   # The points need to be a multipoint object, apparently
-  points_multipoint <- sf::st_combine(sf::st_geometry(points))
+  points_multipoint <- sf::st_combine(sf::st_geometry(centroids))
   
   # Generate the Thiessen polygons, not bothering to try to use the sample frame as an envelope
   # This is because it ignores the envelope argument if the envelope polygons are smaller than the default boundaries

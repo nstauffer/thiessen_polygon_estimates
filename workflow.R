@@ -88,10 +88,7 @@ sample_points <- points_gen(frame = aoi,
 # Attribute them with raster values
 sample_points_spdf <- methods::as(sample_points,
                                   "Spatial")
-# raster::writeRaster(x = landscape_raster,
-#                     filename = "C:/Users/Nelson/Desktop/garbage/test_raster2.tif")
-# sf::st_write(obj = sample_points,
-#              dsn = "C:/Users/Nelson/Desktop/garbage/test_points.shp")
+
 raster_values <- raster::extract(x = current_raster,
                                  y = sample_points_spdf)
 

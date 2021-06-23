@@ -784,3 +784,76 @@ goodman_cis <- function(counts,
   
   return(output)
 }
+
+#' Weighted and unweighted analysis of categorical data
+#' @param data Any object that can be treated as a data frame. Must contain the variables \code{value} and \code{weight}
+#' @param possible_values Vector. Must contain all possible values that could appear in \code{data$value} regardless of whether those values are actually represented.
+#' @param alpha Numeric. The alpha value for calculating Goodman's confidence intervals.
+#' @returns A wide-format data frame summarizing for each value in \code{possible_values}: number of instances of the value, the sum of weights for all instances of the value, the proportion of the population represented by those values, the weighted proportion, and the Goodman's confidence intervals for both proportions.
+categorical_analysis <- function(data,
+                                 possible_values,
+                                 alpha = 0.2){
+  # Sanitize
+  data_variables <- names(data)
+  if (!("value" %in% data_variables)) {
+    stop("The variable 'value' must be present in data and contain the value for each observation")
+  }
+  if (!("weight" %in% data_variables)) {
+    stop("The variable 'weight' must be present in data and contain the weight for each observation")
+  }
+  if (!all(data$value %in% possible_values)) {
+    stop("possible_values does not contain all values that appear in data")
+  }
+  if (class(alpha) != "numeric") {
+    stop("alpha must be a numeric value between 0 and 1")
+  } else if (alpha <= 0 | alpha >= 1) {
+    stop("alpha must be a numeric value between 0 and 1")
+  }
+  
+  # Split the points by value for summary
+  data_categorical_list <- split(data,
+                                 data$value)
+  # Summarize for each value
+  data_summary_list <- lapply(X = data_categorical_list,
+                              FUN = function(X){
+                                data.frame(value = unique(X$value),
+                                           n = nrow(X),
+                                           weight_sum = sum(X$weight))
+                              })
+  # Find missing values! Only important for categorical situations
+  missing_values <- possible_values[!(possible_values %in% data$value)]
+  # Add in zeroed out data frames for the missing values (if there are any)
+  if (length(missing_values) > 0) {
+    for (missing_value in missing_values) {
+      data_summary_list[[paste(missing_value)]] <- data.frame(value = missing_value,
+                                                              n = 0,
+                                                              weight_sum =0)
+    }
+  }
+  
+  # Combine into a single data frame
+  data_summary <- do.call(rbind,
+                          data_summary_list)
+  
+  data_summary$proportion <- data_summary$n / sum(data_summary$n)
+  data_summary$proportion_weighted <- data_summary$weight_sum / sum(data_summary$weight_sum)
+  
+  # Get confidence intervals
+  unweighted_goodmans_cis <- goodman_cis(counts = data_summary$n,
+                                         alpha = alpha,
+                                         chisq = "best",
+                                         verbose = TRUE)[, c("lower_bound", "upper_bound")]
+  
+  
+  weighted_goodmans_cis <- goodman_cis(counts = sum(data_summary$n) * data_summary$proportion_weighted,
+                                       alpha = alpha,
+                                       chisq = "best",
+                                       verbose = TRUE)[, c("lower_bound", "upper_bound")]
+  names(unweighted_goodmans_cis) <- paste0(names(unweighted_goodmans_cis), "_weighted")
+  
+  data_summary <- cbind(data_summary,
+                        unweighted_goodmans_cis,
+                        weighted_goodmans_cis)
+  
+  return(data_summary)
+}

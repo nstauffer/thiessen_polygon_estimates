@@ -7,10 +7,10 @@
 #' @param use_albers Logical. If \code{TRUE} then \code{centroids} and \code{frame} will be reprojected into Albers Equal Area (AEA) and the output will be in AEA. If \code{FALSE} then \code{frame} will be reprojected to match the coordinate reference ssytem (CRS) of \code{centroids} and the output will be in that CRS. CRSs using decimal degrees will throw errors or warnings. Defaults to \code{TRUE}.
 #' @return An sf object composed of polygon or multipolygon geometry
 thiessen_polygons_gen <- function(centroids,
-                              frame,
-                              points = NULL,
-                              points_min = 2,
-                              use_albers = TRUE){
+                                  frame,
+                                  points = NULL,
+                                  points_min = 2,
+                                  use_albers = TRUE){
   # Define Alber's Equal Area CRS
   aea_proj <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
   
@@ -36,7 +36,7 @@ thiessen_polygons_gen <- function(centroids,
   # Remove any Z dimension
   # It screws with the process and is irrelevant
   centroids <- sf::st_zm(centroids,
-                      drop = TRUE)
+                         drop = TRUE)
   frame <- sf::st_zm(frame,
                      drop = TRUE)
   if (!is.null(points)) {
@@ -47,7 +47,7 @@ thiessen_polygons_gen <- function(centroids,
   # Reproject as necessary
   if (use_albers) {
     centroids <- sf::st_transform(x = centroids,
-                               crs = aea_proj)
+                                  crs = aea_proj)
     frame <- sf::st_transform(x = frame,
                               crs = aea_proj)
     if (!is.null(points)) {
@@ -107,10 +107,10 @@ thiessen_polygons_gen <- function(centroids,
 #' @param projection Optional character string or CRS object. The coordinate reference system for the raster. May be a PROJ4 string or a CRS object. Defaults to Albers Equal Area.
 #' @returns Raster object of the specified dimensions with cells randomly assigned the values in \code{categories}
 landscape_gen_categorical <- function(categories,
-                              ncol,
-                              nrow,
-                              seed_number = NULL,
-                              projection = NULL){
+                                      ncol,
+                                      nrow,
+                                      seed_number = NULL,
+                                      projection = NULL){
   if (class(ncol) != "numeric" | length(ncol) > 1) {
     stop("ncol must be a single numeric value")
   }
@@ -425,7 +425,7 @@ concavify <- function(polygon,
   
   # Keep only the inside-the-polygon points
   valid_concave_vertices <- potential_vertices[concave_vertex_indices, ]
-
+  
   # Get the polygon coordinates
   polygon_coordinates <- sf::st_coordinates(polygon)
   

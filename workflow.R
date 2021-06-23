@@ -257,14 +257,14 @@ raster_summary <- switch(raster_type,
                                                         stringsAsFactors = FALSE)
                            # Calculate the proportions
                            raster_summary$proportion <- raster_summary$n / sum(raster_summary$n)
-                           return(raster_summary)
+                           raster_summary
                          },
                          "continuous" = {
                            raster_mean <- mean(raster_values_in_aoi)
                            raster_sd <- sd(raster_values_in_aoi)
                            raster_summary <- data.frame(mean = raster_mean,
                                                         sd = raster_sd)
-                           return(raster_summary)
+                           raster_summary
                          })
 
 #### Write out results ####

@@ -27,7 +27,7 @@ aoi_seed <- 69
 # Sample
 sample_type <- "simple"
 n_sample_points <- 50
-sample_seeds <- 666:766
+sample_seeds <- 1:100
 
 # Thiessen polygons
 thiessen_distribution <- "simple"
@@ -150,7 +150,6 @@ sample_points_attributed_list <- lapply(X = sample_points_list,
                                           
                                           sample_points
                                         })
-
 
 
 #### Run weighted analysis ####

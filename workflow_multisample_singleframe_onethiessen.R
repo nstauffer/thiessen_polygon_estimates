@@ -198,10 +198,55 @@ raster_summary <- switch(raster_type,
                          })
 
 #### Plot the results ####
+unweighted_results <- sample_point_summary[, c("sample_seed", "value", "n", "proportion", "lower_bound", "upper_bound")]
+unweighted_results$weighted <- "Unweighted"
+weighted_results <- sample_point_summary[, c("sample_seed", "value", "n", "proportion_weighted", "lower_bound_weighted", "upper_bound_weighted")]
+weighted_results$weighted <- "Weighted"
+names(weighted_results) <- names(unweighted_results)
+
+results <- rbind(unweighted_results,
+                 weighted_results)
+
+# Boxplot of proportions
+ggplot() +
+  geom_boxplot(data = results,
+             aes(x = value,
+                 y = proportion)) +
+  geom_point(data = raster_summary,
+             aes(x = category,
+                 y = proportion),
+             color = "red") +
+  facet_wrap(~weighted)
+
+# Bounds
+ggplot() +
+  geom_segment(data = results,
+               aes(x = value,
+                   xend = value,
+                   y = lower_bound,
+                   yend = upper_bound),
+               size = 2,
+               alpha = 0.01) +
+  geom_point(data = raster_summary,
+             aes(x = category,
+                 y = proportion),
+             color = "red") +
+  facet_wrap(~weighted)
+
+
 ggplot() +
   geom_boxplot(data = sample_point_summary,
              aes(x = value,
                  y = proportion_weighted)) +
+  geom_point(data = raster_summary,
+             aes(x = category,
+                 y = proportion),
+             color = "red")
+
+ggplot() +
+  geom_boxplot(data = sample_point_summary,
+               aes(x = value,
+                   y = proportion)) +
   geom_point(data = raster_summary,
              aes(x = category,
                  y = proportion),

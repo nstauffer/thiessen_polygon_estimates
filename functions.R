@@ -652,7 +652,8 @@ points_gen <- function(frame,
                      set.seed(seed_number)
                      sp::spsample(x = methods::as(frame, "Spatial"),
                                   n = n_points,
-                                  type = "random")
+                                  type = "random",
+                                  iter = 10)
                    },
                    "balanced" = {
                      # grts() requires a design object with this format

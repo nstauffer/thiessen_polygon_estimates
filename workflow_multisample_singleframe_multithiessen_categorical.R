@@ -25,12 +25,11 @@ aoi_seed <- 69
 sample_type <- "simple"
 n_sample_points <- 50
 sample_seeds <- 666:676
-sample_seed <- 666
 
 # Thiessen polygons
 thiessen_distribution <- "simple"
 thiessen_proportion <- 0.1
-thiessen_seed <- 96
+thiessen_seeds <- 96:106
 thiessen_minimum_sample <- 2
 
 
@@ -108,20 +107,7 @@ sample_points_list <- lapply(X = sample_seeds,
                                
                                return(sample_points)
                              })
-# sample_points <- points_gen(frame = aoi,
-#                             sample_type = sample_type,
-#                             n_points = n_sample_points,
-#                             seed_number = sample_seed,
-#                             projection = projection)
-# 
-# # Attribute them with raster values
-# sample_points_spdf <- methods::as(sample_points,
-#                                   "Spatial")
-#
-# raster_values <- raster::extract(x = current_raster,
-#                                  y = sample_points_spdf)
-# 
-# sample_points$value <- raster_values
+
 
 #### Generate Thiessen polygons ####
 ### Maybe do this inside a while() and name the output list with the seed number?

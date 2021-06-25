@@ -858,3 +858,25 @@ categorical_analysis <- function(data,
   
   return(data_summary)
 }
+
+#' Weighted analysis of a continuous variable
+#' @param data Any object that can be treated as a data frame. Must contain the variables \code{value} and \code{weight}
+#' @param alpha Numeric. The alpha value for calculating confidence intervals.
+#' @returns A wide-format data frame with the following values: number of observations, mean, standard deviation, weighted mean, and weighted standard deviation.
+continuous_analysis <- function(data,
+                                alpha) {
+  data$weighted_value <- data$value * data$weight / sum(data$weight)
+  n <- nrow(data)
+  mean <- mean(data$value)
+  sd <- sd(data$value)
+  mean_weighted <- sum(data$weighted_value)
+  sd_weighted <- sqrt(sum(data$weight * (data$value - mean)^2) / ((n - 1) / n * sum(data$weight)))
+  
+  output <- data.frame(n = n,
+                       mean = mean,
+                       sd = sd,
+                       mean_weighted = mean_weighted,
+                       sd_weighted = sd_weighted)
+  
+  return(output)
+}

@@ -1,4 +1,77 @@
 library(ggplot2)
+#### WEIGHTED ANALYSIS OF CONTINUOUS VARIABLE ####
+data <- sample_points_attributed_list[[1]]
+alpha <- 0.2
+
+continuous_analysis <- function(data,
+                                alpha) {
+  data$weighted_value <- data$value * data$weight / sum(data$weight)
+  n <- nrow(data)
+  mean <- sum(data$weighted_value)
+  sd <- sqrt(sum(data$weight * (data$value - mean)^2) / ((n - 1) / n * sum(data$weight)))
+  
+  output <- data.frame(n = n,
+                       mean = mean,
+                       sd = sd)
+  
+  return(output)
+}
+
+test <- continuous_analysis(data = sample_points_attributed_list[[1]],
+                            alpha = analysis_alpha)
+
+
+#### LANDSCAPE RASTERS ####
+projection <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
+
+test_raster <- NLMR::nlm_gaussianfield(ncol = raster_ncol,
+                                       nrow = raster_nrow,
+                                       resolution = raster_resolution,
+                                       autocorr_range = raster_autocorr_range,
+                                       mag_var = raster_mag_var,
+                                       nug = raster_nug,
+                                       mean = raster_mean,
+                                       user_seed = raster_seed,
+                                       rescale = raster_rescale)
+
+raster::plot(test_raster)
+
+raster::projection(test_raster) <- projection
+
+raster::plot(test_raster)
+
+frame <- aoi_gen(xmin = 0,
+                 xmax = 100,
+                 ymin = 0,
+                 ymax = 100,
+                 n_vertices = 5,
+                 convex_hull = TRUE,
+                 seed_number = 666,
+                 projection = projection)
+
+raster_values_in_aoi <- unlist(raster::extract(x = test_raster,
+                                               y = frame))
+
+raster_summary <- switch(raster_type,
+                         "categorical" = {
+                           # Count the number of cells in each category
+                           category_counts <- table(raster_values_in_aoi)
+                           # Make that into a data frame
+                           raster_summary <- data.frame(category = names(category_counts),
+                                                        n = as.vector(category_counts),
+                                                        stringsAsFactors = FALSE)
+                           # Calculate the proportions
+                           raster_summary$proportion <- raster_summary$n / sum(raster_summary$n)
+                           raster_summary
+                         },
+                         "continuous" = {
+                           raster_mean <- mean(raster_values_in_aoi)
+                           raster_sd <- sd(raster_values_in_aoi)
+                           raster_summary <- data.frame(mean = raster_mean,
+                                                        sd = raster_sd)
+                           raster_summary
+                         })
+
 
 #### THIESSEN POLYGONS ####
 aea_proj <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"

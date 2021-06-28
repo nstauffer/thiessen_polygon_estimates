@@ -90,6 +90,9 @@ aoi$aoi_id <- paste0(raster_metadata[["raster_id"]],
                      "-",
                      "aoi_",
                      aoi_seed)
+aoi$frame_id <- paste0("frame_",
+                       aoi_seed)
+aoi$frame_seed <- aoi_seed
 
 #### Generate sampling points ####
 sample_points_list_1 <- lapply(X = sample_seeds,

@@ -388,6 +388,7 @@ sample_point_summary_thiessen_list <- lapply(X = sample_points_attributed_thiess
                                                sample_point_summary <- continuous_analysis(data = sample_points,
                                                                                            alpha = alpha)
                                                sample_point_summary$sample_seed <- sample_points[["sample_seed"]][1]
+                                               sample_point_summary$method <- "Thiessen"
                                                sample_point_summary
                                              })
 
@@ -405,6 +406,7 @@ sample_point_summary_wgtcat_list <- lapply(X = sample_points_attributed_wgtcat_l
                                              sample_point_summary <- continuous_analysis(data = sample_points,
                                                                                          alpha = alpha)
                                              sample_point_summary$sample_seed <- sample_points[["sample_seed"]][1]
+                                             sample_point_summary$method <- "WgtCat"
                                              sample_point_summary
                                            })
 

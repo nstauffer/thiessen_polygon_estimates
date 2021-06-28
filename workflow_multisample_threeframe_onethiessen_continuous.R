@@ -122,69 +122,28 @@ sample_points_list_1 <- lapply(X = sample_seeds,
                                  
                                  sample_points$value <- raster_values
                                  
+                                 sample_points$frame_id <- unique(frame$frame_id)
+                                 
                                  sample_points
                                })
 
 # Create the sampling frame that isn't the AOI
-frame <- aoi_gen(xmax = raster_ncol,
-                 xmin = 0,
-                 ymax = raster_nrow,
-                 ymin = 0,
-                 n_vertices = frame_n_vertices,
-                 convex_hull = frame_convex_hull,
-                 seed_number = frame_seed)
-
-# Generate sampling points for that frame, restricted to those that fall in the AOI
-sample_point_list_2 <- lapply(X = sample_seeds,
-                              frame = frame,
-                              aoi = aoi,
-                              sample_type = sample_type,
-                              n_points = n_sample_points,
-                              projection = projection,
-                              raster = current_raster,
-                              FUN = function(X,
-                                             frame,
-                                             aoi,
-                                             sample_type,
-                                             n_points,
-                                             projection,
-                                             raster){
-                                
-                                sample_points <- points_gen(frame = frame,
-                                                            sample_type = sample_type,
-                                                            n_points = n_points,
-                                                            seed_number = X,
-                                                            projection = projection)
-
-                                sample_point_indices_in_aoi <- as.vector(sf::st_intersects(x = aoi,
-                                                                                           y = sample_points,
-                                                                                           sparse = FALSE))
-                                
-                                sample_points <- sample_points[sample_point_indices_in_aoi, ]
-                                
-                                # Attribute them with raster values
-                                sample_points_spdf <- methods::as(sample_points,
-                                                                  "Spatial")
-                                
-                                raster_values <- raster::extract(x = raster,
-                                                                 y = sample_points_spdf)
-                                
-                                sample_points$value <- raster_values
-                                
-                                sample_points
-                              })
-
-# Create a third sampling frame that isn't the AOI
 frame_2 <- aoi_gen(xmax = raster_ncol,
                    xmin = 0,
                    ymax = raster_nrow,
                    ymin = 0,
                    n_vertices = frame_n_vertices,
                    convex_hull = frame_convex_hull,
-                   seed_number = frame_seed * 2)
+                   seed_number = frame_seed)
+frame_2$raster_id <- raster_metadata$raster_id
+frame_2$frame_seed <- frame_seed
+frame_2$frame_id <- paste0(raster_metadata$raster_id,
+                           "-",
+                           "frame_",
+                           frame_2$frame_seed)
 
 # Generate sampling points for that frame, restricted to those that fall in the AOI
-sample_point_list_3 <- lapply(X = sample_seeds,
+sample_point_list_2 <- lapply(X = sample_seeds,
                               frame = frame_2,
                               aoi = aoi,
                               sample_type = sample_type,
@@ -219,6 +178,65 @@ sample_point_list_3 <- lapply(X = sample_seeds,
                                                                  y = sample_points_spdf)
                                 
                                 sample_points$value <- raster_values
+                                
+                                sample_points$frame_id <- unique(frame$frame_id)
+                                
+                                sample_points
+                              })
+
+# Create a third sampling frame that isn't the AOI
+frame_3 <- aoi_gen(xmax = raster_ncol,
+                   xmin = 0,
+                   ymax = raster_nrow,
+                   ymin = 0,
+                   n_vertices = frame_n_vertices,
+                   convex_hull = frame_convex_hull,
+                   seed_number = frame_seed * 2)
+frame_3$raster_id <- raster_metadata$raster_id
+frame_3$frame_seed <- frame_seed * 2
+frame_3$frame_id <- paste0(raster_metadata$raster_id,
+                           "-",
+                           "frame_",
+                           frame_3$frame_seed)
+
+# Generate sampling points for that frame, restricted to those that fall in the AOI
+sample_point_list_3 <- lapply(X = sample_seeds,
+                              frame = frame_3,
+                              aoi = aoi,
+                              sample_type = sample_type,
+                              n_points = n_sample_points,
+                              projection = projection,
+                              raster = current_raster,
+                              FUN = function(X,
+                                             frame,
+                                             aoi,
+                                             sample_type,
+                                             n_points,
+                                             projection,
+                                             raster){
+                                
+                                sample_points <- points_gen(frame = frame,
+                                                            sample_type = sample_type,
+                                                            n_points = n_points,
+                                                            seed_number = X,
+                                                            projection = projection)
+                                
+                                sample_point_indices_in_aoi <- as.vector(sf::st_intersects(x = aoi,
+                                                                                           y = sample_points,
+                                                                                           sparse = FALSE))
+                                
+                                sample_points <- sample_points[sample_point_indices_in_aoi, ]
+                                
+                                # Attribute them with raster values
+                                sample_points_spdf <- methods::as(sample_points,
+                                                                  "Spatial")
+                                
+                                raster_values <- raster::extract(x = raster,
+                                                                 y = sample_points_spdf)
+                                
+                                sample_points$value <- raster_values
+                                
+                                sample_points$frame_id <- unique(frame$frame_id)
                                 
                                 sample_points
                               })
@@ -277,13 +295,13 @@ sample_points_attributed_thiessen_list <- lapply(X = sample_points_list,
 #### Generate wgtcat polygons ####
 # Give both sets of polygons unique IDs in the same variable
 aoi$uid <- "aoi"
-frame$uid <- "frame"
 frame_2$uid <- "frame_2"
+frame_3$uid <- "frame_3"
 
 # Combine the polygons
 polygons <- rbind(aoi[, "uid"],
-                  frame[, "uid"],
-                  frame_2[, "uid"])
+                  frame_2[, "uid"],
+                  frame_3[, "uid"])
 
 # Intersect them to create weight category polygons
 wgtcat_polygons <- sf::st_intersection(polygons)

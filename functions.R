@@ -599,6 +599,38 @@ concavify <- function(polygon,
   return(output)
 }
 
+#' Generate weight category polygons
+#' @param polygons sf polygon object. Must contain each frame as an observation.
+#' @param aoi_index Numeric value. The index in \code{polygons} of the polygon acting as the area of interest or boundary for the intersection. The function will only return geometry that overlaps with the polygon at this index, discarding all geometry that consists only of the other polygons.
+#' @returns sf polygon object with the variables "wgtcat_id" containing the unique identifier for the weight categories and "area_m2" containing the area in meters squared (assuming that the projection is Albers Equal Area or other with meters as units).
+wgtcat_gen <- function(polygons,
+                       aoi_index = 1){
+  if (!("sf" %in% class(polygons))) {
+    stop("polygons must be an sf object of geometry type 'POLYGON'")
+  } else if (!all(sf::st_geometry_type(polygons) %in% "POLYGON")) {
+    stop("polygons must be an sf object of geometry type 'POLYGON'")
+  }
+  if (!(aoi_index %in% 1:nrow(polygons))) {
+    stop("aoi_index must refer to the index of one of the entries in polygons")
+  }
+  
+  # Intersect them to create weight category polygons
+  wgtcat_polygons <- sf::st_intersection(polygons)
+  
+  # Add in a unique ID for them
+  wgtcat_polygons$wgtcat_id <- sapply(X = wgtcat_polygons$origins,
+                                      FUN = function(X){
+                                        paste(X, collapse = "-")
+                                      })
+  
+  # Drop any that are just from the frames outside the AOI
+  wgtcat_polygons <- wgtcat_polygons[grepl(wgtcat_polygons$wgtcat_id, pattern = paste0("^", aoi_index)), ]
+  
+  # Add the areas
+  wgtcat_polygons$area_m2 <- as.vector(sf::st_area(wgtcat_polygons))
+  
+  return(wgtcat_polygons)
+}
 
 #' Generate points within a given frame by one of three methods
 #' @param frame sf polygon object. The sample frame within which points will be drawn. This should probably be a single simple polygon.

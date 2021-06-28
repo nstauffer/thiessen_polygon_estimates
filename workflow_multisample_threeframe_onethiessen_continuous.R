@@ -450,6 +450,11 @@ names(weighted_wgtcat_results) <- names(unweighted_results)
 results <- rbind(unweighted_results,
                  weighted_thiessen_results,
                  weighted_wgtcat_results)
+results$mean_true <- raster_summary$mean
+results$sd_true <- raster_summary$sd
+results$raster_id <- raster_metadata$raster_id
+results$aoi_id <- aoi$aoi_id
+
 
 # Boxplot of means
 ggplot() +

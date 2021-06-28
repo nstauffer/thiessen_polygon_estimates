@@ -329,19 +329,10 @@ polygons <- rbind(aoi[, "uid"],
                   frame_3[, "uid"])
 
 # Intersect them to create weight category polygons
-wgtcat_polygons <- sf::st_intersection(polygons)
-
-# Add in a unique ID for them
-wgtcat_polygons$wgtcat_id <- sapply(X = wgtcat_polygons$origins,
-                                    FUN = function(X){
-                                      paste(X, collapse = "-")
-                                    })
-
-# Drop any that are just from the frames outside the AOI
-wgtcat_polygons <- wgtcat_polygons[grepl(wgtcat_polygons$wgtcat_id, pattern = "1"), ]
-
-# Add the areas
-wgtcat_polygons$area_m2 <- as.vector(sf::st_area(wgtcat_polygons))
+wgtcat_polygons <- wgtcat_gen(polygons,
+                              aoi_index = 1)
+wgtcat_polygons$raster_id <- raster_metadata$raster_id
+wgtcat_polygons$aoi_id <- aoi$aoi_id
 
 # Attribute the sample point with wgtcat info
 sample_points_attributed_wgtcat_list <- lapply(X = sample_points_list,

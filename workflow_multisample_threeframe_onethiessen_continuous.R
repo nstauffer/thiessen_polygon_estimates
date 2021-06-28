@@ -8,6 +8,7 @@ source("C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/functions.
 # Simluation
 n_sims <- 10
 projection <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
+output_path <- "C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/simulations/test/output/"
 
 # Raster
 raster_type <- "continuous"
@@ -559,3 +560,4 @@ results_output_path <- paste0(output_path,
                               "/",
                               "results.csv")
 write.csv(x = results[, results_output_variables],
+          file = results_output_path)

@@ -450,22 +450,4 @@ ggplot() +
   facet_wrap(~weighted)
 
 
-ggplot() +
-  geom_boxplot(data = sample_point_summary,
-               aes(x = value,
-                   y = proportion_weighted)) +
-  geom_point(data = raster_summary,
-             aes(x = category,
-                 y = proportion),
-             color = "red")
-
-ggplot() +
-  geom_boxplot(data = sample_point_summary,
-               aes(x = value,
-                   y = proportion)) +
-  geom_point(data = raster_summary,
-             aes(x = category,
-                 y = proportion),
-             color = "red")
-
 #### Write out results ####

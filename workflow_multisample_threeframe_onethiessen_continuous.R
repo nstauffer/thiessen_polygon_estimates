@@ -340,6 +340,11 @@ sample_points_attributed_wgtcat_list <- lapply(X = sample_points_list,
                                                FUN = function(X, wgtcat_polygons){
                                                  sample_points <- X
                                                  
+                                                 # Get the current sample seed
+                                                 current_sample_seed <- unique(sample_points$sample_seed)
+                                                 
+                                                 # Add it to the wgtcat polygons
+                                                 wgtcat_polygons$sample_seed <- current_sample_seed
                                                  
                                                  # Join with the points to get wgtcat_id added
                                                  sample_points <- sf::st_join(x = sample_points,
@@ -368,6 +373,9 @@ sample_points_attributed_wgtcat_list <- lapply(X = sample_points_list,
                                                  
                                                  sample_points
                                                })
+
+sample_points_attributed_wgtcat <- do.call(rbind,
+                                           sample_points_attributed_wgtcat_list)
 
 #### Run weighted analysis ####
 sample_point_summary_thiessen_list <- lapply(X = sample_points_attributed_thiessen_list,

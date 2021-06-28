@@ -253,44 +253,69 @@ sample_points_list <- mapply(X = sample_points_list_1,
                              })
 
 #### Generate Thiessen polygons ####
-sample_points_attributed_thiessen_list <- lapply(X = sample_points_list,
-                                                 frame = aoi,
-                                                 n_polygons = round(n_sample_points * thiessen_proportion),
-                                                 points = sample_points,
-                                                 points_min = thiessen_minimum_sample,
-                                                 seed_number = thiessen_seed,
-                                                 seed_increment = 100000,
-                                                 use_albers = TRUE,
-                                                 verbose = TRUE,
-                                                 FUN = function(X,
-                                                                frame,
-                                                                n_polygons,
-                                                                points,
-                                                                points_min,
-                                                                seed_number,
-                                                                seed_increment,
-                                                                use_albers,
-                                                                verbose){
-                                                   sample_points <- X
-                                                   
-                                                   thiessen_polygons <- thiessen_polygons_gen_random(frame = frame,
-                                                                                                     n_polygons = n_polygons,
-                                                                                                     points = sample_points,
-                                                                                                     points_min = points_min,
-                                                                                                     # seed_number = seed_number,
-                                                                                                     seed_number = unique(sample_points$sample_seed),
-                                                                                                     seed_increment = seed_increment,
-                                                                                                     use_albers = use_albers,
-                                                                                                     verbose = verbose)
-                                                   
-                                                   ## Attribute the points with Thiessen weights
-                                                   sample_points <- sf::st_join(x = sample_points,
-                                                                                y = thiessen_polygons[, c("tpoly_id", "weight")])
-                                                   
-                                                   sample_points <- sample_points[!is.na(sample_points$tpoly_id), ]
-                                                   
-                                                   sample_points
+sample_points_attributed_thiessen_list_list <- lapply(X = sample_points_list,
+                                                      frame = aoi,
+                                                      n_polygons = round(n_sample_points * thiessen_proportion),
+                                                      points = sample_points,
+                                                      points_min = thiessen_minimum_sample,
+                                                      seed_number = thiessen_seed,
+                                                      seed_increment = 100000,
+                                                      use_albers = TRUE,
+                                                      verbose = TRUE,
+                                                      FUN = function(X,
+                                                                     frame,
+                                                                     n_polygons,
+                                                                     points,
+                                                                     points_min,
+                                                                     seed_number,
+                                                                     seed_increment,
+                                                                     use_albers,
+                                                                     verbose){
+                                                        sample_points <- X
+                                                        current_sample_seed <- unique(sample_points$sample_seed)
+                                                        
+                                                        thiessen_polygons <- thiessen_polygons_gen_random(frame = frame,
+                                                                                                          n_polygons = n_polygons,
+                                                                                                          points = sample_points,
+                                                                                                          points_min = points_min,
+                                                                                                          # seed_number = seed_number,
+                                                                                                          seed_number = unique(sample_points$sample_seed),
+                                                                                                          seed_increment = seed_increment,
+                                                                                                          use_albers = use_albers,
+                                                                                                          verbose = verbose)
+                                                        
+                                                        thiessen_polygons$tpoly_id <- paste0(thiessen_polygons$aoi_id,
+                                                                                             "-",
+                                                                                             thiessen_polygons$tpoly_id)
+                                                        thiessen_polygons$sample_seed <- current_sample_seed
+                                                        
+                                                        ## Attribute the points with Thiessen weights
+                                                        sample_points <- sf::st_join(x = sample_points,
+                                                                                     y = thiessen_polygons[, c("tpoly_id", "weight")])
+                                                        
+                                                        sample_points <- sample_points[!is.na(sample_points$tpoly_id), ]
+                                                        
+                                                        # We're returning both the points and the polygons so that we can preserve the polygons
+                                                        # Without this, they'd vanish as soon as the lapply() is done
+                                                        output <- list(sample_points = sample_points,
+                                                                       thiessen_polygons = thiessen_polygons)
+                                                        
+                                                        return(output)
+                                                      })
+
+# Make a list of just the sample points with the Thiessen info attached
+sample_points_attributed_thiessen_list <- lapply(X = sample_points_attributed_thiessen_list_list,
+                                                 FUN = function(X){
+                                                   X[["sample_points"]]
                                                  })
+
+# Make an sf polygon object of the Thiessen polygons
+thiessen_list <- lapply(X = sample_points_attributed_thiessen_list_list,
+                        FUN = function(X){
+                          X[["thiessen_polygons"]]
+                        })
+thiessen_polygons <- do.call(rbind,
+                             thiessen_list)
 
 #### Generate wgtcat polygons ####
 # Give both sets of polygons unique IDs in the same variable
@@ -449,5 +474,82 @@ ggplot() +
              color = "red") +
   facet_wrap(~weighted)
 
-
 #### Write out results ####
+# AOI
+aoi_output_variables <- c("raster_id", "aoi_id", "aoi_seed")
+aoi_output_path <- paste0(output_path,
+                          "/",
+                          "spatial",
+                          "/",
+                          "aoi.shp")
+sf::st_write(aoi[, aoi_output_variables],
+             dsn = aoi_output_path,
+             driver = "ESRI Shapefile")
+
+# Sample frames
+frame_output_variables <- c("raster_id", "frame_id", "frame_seed")
+frames <- rbind(frame_2,
+                frame_3)[, frame_output_variables]
+frame_output_path <- paste0(output_path,
+                            "/",
+                            "spatial",
+                            "/",
+                            "frames.shp")
+sf::st_write(frames[, frame_output_variables],
+             dsn = frame_output_path,
+             driver = "ESRI Shapefile")
+
+# Thiessen polygons
+thiessen_polygons_output_variables <- c("raster_id", "aoi_id", "tpoly_id", "sample_seed", "tpoly_seed", "area_m2", "n_points", "weight")
+thiessen_polygons_output_path <- paste0(output_path,
+                                        "/",
+                                        "spatial",
+                                        "/",
+                                        "thiessen_polygons.shp")
+sf::st_write(thiessen_polygons[, thiessen_polygons_output_variables],
+             dsn = thiessen_polygons_output_path,
+             driver = "ESRI Shapefile")
+
+# WgtCat polygons
+wgtcat_output_variables <- c("raster_id", "aoi_id", "wgtcat_id", "area_m2")
+wgtcat_output_path <- paste0(output_path,
+                             "/",
+                             "spatial",
+                             "/",
+                             "wgtcat.shp")
+sf::st_write(wgtcat_polygons[, wgtcat_output_variables],
+             dsn = wgtcat_output_path,
+             driver = "ESRI Shapefile")
+
+# Points
+sample_points_attributed_thiessen <- do.call(rbind,
+                                             sample_points_attributed_thiessen_list)
+sample_points_attributed_thiessen$wgtcat_id <- NA
+sample_points_attributed_thiessen$raster_id <- raster_metadata$raster_id
+sample_points_attributed_thiessen$aoi_id <- aoi$aoi_id
+sample_points_attributed_wgtcat <- do.call(rbind,
+                                           sample_points_attributed_wgtcat_list)
+sample_points_attributed_wgtcat$tpoly_id <- NA
+sample_points_attributed_wgtcat$raster_id <- raster_metadata$raster_id
+sample_points_attributed_wgtcat$aoi_id <- aoi$aoi_id
+
+sample_points_output_variables <- c("raster_id", "aoi_id", "frame_id", "tpoly_id", "wgtcat_id", "sample_id", "sample_seed", "value", "weight")
+sample_points_attributed_combined <- rbind(sample_points_attributed_thiessen[, sample_points_output_variables],
+                                           sample_points_attributed_wgtcat[, sample_points_output_variables])
+sample_points_output_path <- paste0(output_path,
+                                    "/",
+                                    "spatial",
+                                    "/",
+                                    "points.shp")
+sf::st_write(sample_points_attributed_combined,
+             dsn = sample_points_output_path,
+             driver = "ESRI Shapefile")
+
+# Results
+results_output_variables <- c("raster_id", "aoi_id", "sample_seed", "weighted", "n", "mean", "sd", "mean_true", "sd_true")
+results_output_path <- paste0(output_path,
+                              "/",
+                              "results",
+                              "/",
+                              "results.csv")
+write.csv(x = results[, results_output_variables],

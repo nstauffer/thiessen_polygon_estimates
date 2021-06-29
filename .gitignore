@@ -27,3 +27,4 @@ simulations/test/output/spatial/wgtcat.shx
 *.shp
 *.shx
 *.tif
+*.pdf

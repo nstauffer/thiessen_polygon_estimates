@@ -901,14 +901,18 @@ continuous_analysis <- function(data,
   n <- nrow(data)
   mean <- mean(data$value)
   sd <- sd(data$value)
+  variance <- var(data$value)
   mean_weighted <- sum(data$weighted_value)
   sd_weighted <- sqrt(sum(data$weight * (data$value - mean)^2) / ((n - 1) / n * sum(data$weight)))
+  variance_weighted <- var(data$weighted_value)
   
   output <- data.frame(n = n,
                        mean = mean,
                        sd = sd,
+                       variance = variance,
                        mean_weighted = mean_weighted,
-                       sd_weighted = sd_weighted)
+                       sd_weighted = sd_weighted,
+                       variance_weighted = variance_weighted)
   
   return(output)
 }

@@ -22,3 +22,8 @@ simulations/test/output/spatial/wgtcat.dbf
 simulations/test/output/spatial/wgtcat.prj
 simulations/test/output/spatial/wgtcat.shp
 simulations/test/output/spatial/wgtcat.shx
+*.dbf
+*.prj
+*.shp
+*.shx
+*.tif

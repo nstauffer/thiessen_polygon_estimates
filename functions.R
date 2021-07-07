@@ -5,9 +5,9 @@
 #' @param use_albers Logical. If \code{TRUE} then \code{centroids} and \code{frame} will be reprojected into Albers Equal Area (AEA) and the output will be in AEA. If \code{FALSE} then \code{frame} will be reprojected to match the coordinate reference ssytem (CRS) of \code{centroids} and the output will be in that CRS. CRSs using decimal degrees will throw errors or warnings. Defaults to \code{TRUE}.
 #' @return An sf object composed of polygon or multipolygon geometry
 thiessen_polygons_gen_fixed <- function(centroids,
-                                  frame,
-                                  seed_number = 420,
-                                  use_albers = TRUE){
+                                        frame,
+                                        seed_number = 420,
+                                        use_albers = TRUE){
   # Define Alber's Equal Area CRS
   aea_proj <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
   
@@ -22,14 +22,14 @@ thiessen_polygons_gen_fixed <- function(centroids,
   } else if (!all(sf::st_geometry_type(frame) %in% c("POLYGON", "MULTIPOLYGON"))){
     stop("frame must be an sf polygon object")
   }
-
+  
   # Remove any Z dimension
   # It screws with the process and is irrelevant
   centroids <- sf::st_zm(centroids,
                          drop = TRUE)
   frame <- sf::st_zm(frame,
                      drop = TRUE)
-
+  
   # Reproject as necessary
   if (use_albers) {
     centroids <- sf::st_transform(x = centroids,

@@ -28,3 +28,6 @@ simulations/test/output/spatial/wgtcat.shx
 *.shx
 *.tif
 *.pdf
+*.csv
+doc/data_formats_20210616.pptx
+*.pptx

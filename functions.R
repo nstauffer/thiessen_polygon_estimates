@@ -916,3 +916,28 @@ continuous_analysis <- function(data,
   
   return(output)
 }
+
+#' Calculate a weighted variance
+#' @param values Numeric vector. The values to calculate teh weighted variance for.
+#' @param weights Numeric vector. The weights for the vector \code{values}. They must be in the same order as \code{values}.
+#' @param na_remove Logical. If \code{TRUE} then any data with either a value or weight of \code{NA} will be removed before calculating. Defaults to \code{FALSE}.
+weighted_variance <- function(values,
+                              weights,
+                              na_remove = FALSE) {
+  # Remove the NAs if asked
+  if (na_remove) {
+    valid_indices <- !is.na(values) & !is.na(weights)
+    values <- values[valid_indices]
+    weights <- weights[valid_indices]
+  }
+  # Get the sum of the weights
+  sum_of_weights <- sum(weights)
+  # Get the sum of the squares of the weights
+  sum_of_weights_squared <- sum(weights^2)
+  # Get the weighted mean
+  weighted_mean <- sum(values * weights) / sum_of_weights
+  # Calculate variance!
+  variance <- (sum_of_weights / (sum_of_weights^2 - sum_of_weights_squared)) * sum(weights * (values - weighted_mean)^2,
+                                                                                   na.rm = na_remove)
+  return(variance)
+}

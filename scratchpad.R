@@ -1,4 +1,10 @@
 library(ggplot2)
+ggplot() +
+  geom_sf(data = aoi) +
+  geom_sf(data = frame,
+          alpha = 0.5) +
+  geom_sf(data = sample_point_list[[1]])
+
 #### WEIGHTED ANALYSIS OF CONTINUOUS VARIABLE ####
 data <- sample_points_attributed_list[[1]]
 alpha <- 0.2
@@ -20,9 +26,42 @@ continuous_analysis <- function(data,
 test <- continuous_analysis(data = sample_points_attributed_list[[1]],
                             alpha = analysis_alpha)
 
+### WILCOXON SIGNED RANK TEST ####
+# Categorical
+results_test <- merge(x = sample_point_summary_thiessen,
+                      y = raster_summary,
+                      by.x = "value",
+                      by.y = "category",
+                      all.x = TRUE)
+
+test <- wilcox.test(x = results_test$proportion_weighted,
+                    y = results_test$proportion.y,
+                    paired = TRUE)
+
+# Continuous
+results_test <- sample_point_summary_thiessen
+results_test$mean_raster <- raster_summary$mean
+
+test <- wilcox.test(x = results_test$mean_weighted,
+                    y = results_test$mean_raster,
+                    paired = TRUE)
 
 #### LANDSCAPE RASTERS ####
 projection <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
+raster_type <- "continuous"
+raster_ncol <- 100
+raster_nrow <- 100
+# raster_values <- c(1, 2, 3)
+# raster_distribution <- "normal"
+raster_resolution = 1
+raster_autocorr_range = 10
+raster_mag_var = 10
+raster_nug = 0.2
+raster_mean = 1
+raster_user_seed = 420
+raster_rescale = TRUE
+raster_seed <- 420
+raster_n_categories <- 3
 
 test_raster <- NLMR::nlm_gaussianfield(ncol = raster_ncol,
                                        nrow = raster_nrow,
@@ -34,9 +73,13 @@ test_raster <- NLMR::nlm_gaussianfield(ncol = raster_ncol,
                                        user_seed = raster_seed,
                                        rescale = raster_rescale)
 
-raster::plot(test_raster)
-
 raster::projection(test_raster) <- projection
+
+category_increment <- 1 / raster_n_categories
+
+for (category in raster_n_categories:1) {
+  test_raster[test_raster >= ((category - 1) * category_increment) & test_raster < (category * category_increment)] <- category
+}
 
 raster::plot(test_raster)
 

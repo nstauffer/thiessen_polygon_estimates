@@ -875,13 +875,13 @@ categorical_analysis <- function(data,
   unweighted_goodmans_cis <- goodman_cis(counts = data_summary$n,
                                          alpha = alpha,
                                          chisq = "best",
-                                         verbose = TRUE)[, c("lower_bound", "upper_bound")]
+                                         verbose = FALSE)[, c("lower_bound", "upper_bound")]
   
   
   weighted_goodmans_cis <- goodman_cis(counts = sum(data_summary$n) * data_summary$proportion_weighted,
                                        alpha = alpha,
                                        chisq = "best",
-                                       verbose = TRUE)[, c("lower_bound", "upper_bound")]
+                                       verbose = FALSE)[, c("lower_bound", "upper_bound")]
   names(unweighted_goodmans_cis) <- paste0(names(unweighted_goodmans_cis), "_weighted")
   
   data_summary <- cbind(data_summary,

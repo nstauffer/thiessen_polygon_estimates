@@ -13,11 +13,15 @@ projection <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_
 raster_type <- "categorical"
 raster_ncol <- 100
 raster_nrow <- 100
-raster_values <- c(1, 2, 3)
-raster_distribution <- "normal"
-raster_mean <- NULL
-raster_sd <- NULL
-raster_seed <- 666
+raster_resolution = 1
+raster_autocorr_range = 10
+raster_mag_var = 10
+raster_nug = 0.2
+raster_mean = 1
+raster_user_seed = 420
+raster_rescale = TRUE
+raster_seed <- 111
+raster_n_categories <- 4
 
 # AOI
 aoi_n_vertices <- 6
@@ -44,23 +48,41 @@ analysis_alpha <- 0.2
 #### Generate a raster ####
 current_raster <- switch(raster_type,
                          "categorical" = {
-                           landscape_gen_categorical(categories =  raster_values,
-                                                     ncol = raster_ncol,
-                                                     nrow = raster_nrow,
-                                                     seed_number = raster_seed,
-                                                     projection = NULL)
+                           raster <- NLMR::nlm_gaussianfield(ncol = raster_ncol,
+                                                             nrow = raster_nrow,
+                                                             resolution = raster_resolution,
+                                                             autocorr_range = raster_autocorr_range,
+                                                             mag_var = raster_mag_var,
+                                                             nug = raster_nug,
+                                                             mean = raster_mean,
+                                                             user_seed = raster_seed,
+                                                             rescale = raster_rescale)
+                           
+                           raster::projection(raster) <- projection
+                           
+                           # Convert to categorical
+                           category_increment <- 1 / raster_n_categories
+                           for (category in raster_n_categories:1) {
+                             raster[raster >= ((category - 1) * category_increment) & raster < (category * category_increment)] <- category
+                           }
+                           raster
                          },
                          "continuous" = {
-                           landscape_gen_continuous(max = max(raster_values),
-                                                    min = min(raster_values),
-                                                    distribution = raster_distribution,
-                                                    ncol = raster_ncol,
-                                                    nrow = raster_nrow,
-                                                    mean = raster_mean,
-                                                    sd = raster_sd,
-                                                    seed_number = NULL,
-                                                    projection = NULL)
+                           raster <- NLMR::nlm_gaussianfield(ncol = raster_ncol,
+                                                             nrow = raster_nrow,
+                                                             resolution = raster_resolution,
+                                                             autocorr_range = raster_autocorr_range,
+                                                             mag_var = raster_mag_var,
+                                                             nug = raster_nug,
+                                                             mean = raster_mean,
+                                                             user_seed = raster_seed,
+                                                             rescale = raster_rescale)
+                           
+                           raster::projection(raster) <- projection
+                           raster
                          })
+
+raster_values <- unique(as.vector(current_raster))
 
 raster_metadata <- data.frame(raster_id = paste0("raster_", raster_seed),
                               raster_seed = raster_seed,
@@ -116,7 +138,7 @@ sample_points_list_1 <- lapply(X = sample_seeds,
                                })
 
 # Create the sampling frame that isn't the AOI
-frame <- aoi_gen(xmax = raster_ncol,
+frame_2 <- aoi_gen(xmax = raster_ncol,
                  xmin = 0,
                  ymax = raster_nrow,
                  ymin = 0,
@@ -126,61 +148,6 @@ frame <- aoi_gen(xmax = raster_ncol,
 
 # Generate sampling points for that frame, restricted to those that fall in the AOI
 sample_point_list_2 <- lapply(X = sample_seeds,
-                              frame = frame,
-                              aoi = aoi,
-                              sample_type = sample_type,
-                              n_points = n_sample_points,
-                              projection = projection,
-                              raster = current_raster,
-                              FUN = function(X,
-                                             frame,
-                                             aoi,
-                                             sample_type,
-                                             n_points,
-                                             projection,
-                                             raster){
-                                
-                                sample_points <- points_gen(frame = frame,
-                                                            sample_type = sample_type,
-                                                            n_points = n_points,
-                                                            seed_number = X,
-                                                            projection = projection)
-                                
-                                ggplot() +
-                                  geom_sf(data = aoi) +
-                                  geom_sf(data = frame,
-                                          alpha = .5) +
-                                  geom_sf(data = sample_points)
-                                
-                                sample_point_indices_in_aoi <- as.vector(sf::st_intersects(x = aoi,
-                                                                                           y = sample_points,
-                                                                                           sparse = FALSE))
-                                
-                                sample_points <- sample_points[sample_point_indices_in_aoi, ]
-                                
-                                # Attribute them with raster values
-                                sample_points_spdf <- methods::as(sample_points,
-                                                                  "Spatial")
-                                
-                                raster_values <- raster::extract(x = raster,
-                                                                 y = sample_points_spdf)
-                                
-                                sample_points$value <- raster_values
-                                
-                                sample_points
-                              })
-
-# Create a third sampling frame that isn't the AOI
-frame_2 <- aoi_gen(xmax = raster_ncol,
-                   xmin = 0,
-                   ymax = raster_nrow,
-                   ymin = 0,
-                   n_vertices = frame_n_vertices,
-                   convex_hull = frame_convex_hull,
-                   seed_number = frame_seed * 2)
-
-# Generate sampling points for that frame, restricted to those that fall in the AOI
-sample_point_list_3 <- lapply(X = sample_seeds,
                               frame = frame_2,
                               aoi = aoi,
                               sample_type = sample_type,
@@ -200,12 +167,55 @@ sample_point_list_3 <- lapply(X = sample_seeds,
                                                             n_points = n_points,
                                                             seed_number = X,
                                                             projection = projection)
+
+                                sample_point_indices_in_aoi <- as.vector(sf::st_intersects(x = aoi,
+                                                                                           y = sample_points,
+                                                                                           sparse = FALSE))
                                 
-                                ggplot() +
-                                  geom_sf(data = aoi) +
-                                  geom_sf(data = frame,
-                                          alpha = .5) +
-                                  geom_sf(data = sample_points)
+                                sample_points <- sample_points[sample_point_indices_in_aoi, ]
+                                
+                                # Attribute them with raster values
+                                sample_points_spdf <- methods::as(sample_points,
+                                                                  "Spatial")
+                                
+                                raster_values <- raster::extract(x = raster,
+                                                                 y = sample_points_spdf)
+                                
+                                sample_points$value <- raster_values
+                                
+                                sample_points
+                              })
+
+# Create a third sampling frame that isn't the AOI
+frame_3 <- aoi_gen(xmax = raster_ncol,
+                   xmin = 0,
+                   ymax = raster_nrow,
+                   ymin = 0,
+                   n_vertices = frame_n_vertices,
+                   convex_hull = frame_convex_hull,
+                   seed_number = frame_seed * 2)
+
+# Generate sampling points for that frame, restricted to those that fall in the AOI
+sample_point_list_3 <- lapply(X = sample_seeds,
+                              frame = frame_3,
+                              aoi = aoi,
+                              sample_type = sample_type,
+                              n_points = n_sample_points,
+                              projection = projection,
+                              raster = current_raster,
+                              FUN = function(X,
+                                             frame,
+                                             aoi,
+                                             sample_type,
+                                             n_points,
+                                             projection,
+                                             raster){
+                                
+                                sample_points <- points_gen(frame = frame,
+                                                            sample_type = sample_type,
+                                                            n_points = n_points,
+                                                            seed_number = X,
+                                                            projection = projection)
                                 
                                 sample_point_indices_in_aoi <- as.vector(sf::st_intersects(x = aoi,
                                                                                            y = sample_points,
@@ -279,28 +289,17 @@ sample_points_attributed_thiessen_list <- lapply(X = sample_points_list,
 #### Generate wgtcat polygons ####
 # Give both sets of polygons unique IDs in the same variable
 aoi$uid <- "aoi"
-frame$uid <- "frame"
 frame_2$uid <- "frame_2"
+frame_3$uid <- "frame_3"
 
 # Combine the polygons
 polygons <- rbind(aoi[, "uid"],
-                  frame[, "uid"],
-                  frame_2[, "uid"])
+                  frame_2[, "uid"],
+                  frame_3[, "uid"])
 
 # Intersect them to create weight category polygons
-wgtcat_polygons <- sf::st_intersection(polygons)
-
-# Add in a unique ID for them
-wgtcat_polygons$wgtcat_id <- sapply(X = wgtcat_polygons$origins,
-                                    FUN = function(X){
-                                      paste(X, collapse = "-")
-                                    })
-
-# Drop any that are just from the frames outside the AOI
-wgtcat_polygons <- wgtcat_polygons[grepl(wgtcat_polygons$wgtcat_id, pattern = "1"), ]
-
-# Add the areas
-wgtcat_polygons$area_m2 <- as.vector(sf::st_area(wgtcat_polygons))
+wgtcat_polygons <- wgtcat_gen(polygons,
+                              aoi_index = 1)
 
 # Attribute the sample point with wgtcat info
 sample_points_attributed_wgtcat_list <- lapply(X = sample_points_list,

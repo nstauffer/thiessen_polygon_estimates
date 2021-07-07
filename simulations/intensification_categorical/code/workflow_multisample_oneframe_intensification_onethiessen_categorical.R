@@ -7,53 +7,69 @@ source("C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/functions.
 #### Set the config ####
 # Simluation
 projection <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
-output_path <- "C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/simulations/test/output/"
+output_path <- "C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/simulations/intensification_categorical/output/"
+# simulation_seed <- 1
 
 # Raster
-raster_type <- "continuous"
+raster_type <- "categorical"
 raster_ncol <- 1000
 raster_nrow <- 1000
-# raster_values <- c(1, 2, 3)
-# raster_distribution <- "normal"
 raster_resolution = 1
-raster_autocorr_range = 10
+raster_autocorr_range = 50
 raster_mag_var = 10
 raster_nug = 0.2
 raster_mean = 1
-raster_user_seed = 420
 raster_rescale = TRUE
-raster_seed <- 420
+raster_seed <- 420 * simulation_seed
+raster_n_categories <- 3
 
 # AOI
 aoi_n_vertices <- 6
 aoi_convex_hull <- TRUE
-aoi_seed <- 690
+aoi_seed <- 1123 * simulation_seed
 
 # Sample
-frame_seed <- 42
+frame_seed <- 111 * simulation_seed
 frame_n_vertices <- 6
 frame_convex_hull <- TRUE
 sample_type <- "simple"
-n_sample_points <- 100
+n_sample_points <- 25
 sample_seeds <- 1:99
 
 # Thiessen polygons
 thiessen_distribution <- "simple"
-thiessen_proportion <- 0.1
+thiessen_proportion <- 0.2
 thiessen_seed <- 96
 thiessen_minimum_sample <- 2
 
 # Analysis
-analysis_alpha <- 0.2
+analysis_alpha <- 0.05
 
 #### Generate a raster ####
 current_raster <- switch(raster_type,
                          "categorical" = {
-                           landscape_gen_categorical(categories =  raster_values,
-                                                     ncol = raster_ncol,
-                                                     nrow = raster_nrow,
-                                                     seed_number = raster_seed,
-                                                     projection = NULL)
+                           raster <- NLMR::nlm_gaussianfield(ncol = raster_ncol,
+                                                             nrow = raster_nrow,
+                                                             resolution = raster_resolution,
+                                                             autocorr_range = raster_autocorr_range,
+                                                             mag_var = raster_mag_var,
+                                                             nug = raster_nug,
+                                                             mean = raster_mean,
+                                                             user_seed = raster_seed,
+                                                             rescale = raster_rescale)
+                           raster::projection(raster) <- projection
+                           
+                           # Figure out the ranges of raster values for each category (assuming that they've got equal ranges)
+                           # and write those into the raster
+                           raster_category_increment <- 1 / raster_n_categories
+                           # Note that we go from largest to smalles so that we don't accidentally overwrite category 1
+                           # when we get to the highest number category which has an upper limit of 1
+                           for (category in raster_n_categories:1) {
+                             current_category_min <- (category - 1) * raster_category_increment
+                             current_category_max <- category * raster_category_increment
+                             raster[raster >= current_category_min & raster <= current_category_max] <- category
+                           }
+                           raster
                          },
                          "continuous" = {
                            raster <- NLMR::nlm_gaussianfield(ncol = raster_ncol,
@@ -95,23 +111,33 @@ aoi$frame_id <- paste0("frame_",
 aoi$frame_seed <- aoi_seed
 
 #### Generate sampling points ####
+# Points for within the AOI
 sample_points_list_1 <- lapply(X = sample_seeds,
                                frame = aoi,
+                               aoi = aoi,
                                sample_type = sample_type,
                                n_points = n_sample_points,
                                projection = projection,
                                raster = current_raster,
                                FUN = function(X,
                                               frame,
+                                              aoi,
                                               sample_type,
                                               n_points,
                                               projection,
                                               raster){
+                                 
                                  sample_points <- points_gen(frame = frame,
                                                              sample_type = sample_type,
                                                              n_points = n_points,
                                                              seed_number = X,
                                                              projection = projection)
+                                 
+                                 sample_point_indices_in_aoi <- as.vector(sf::st_intersects(x = aoi,
+                                                                                            y = sample_points,
+                                                                                            sparse = FALSE))
+                                 
+                                 sample_points <- sample_points[sample_point_indices_in_aoi, ]
                                  
                                  # Attribute them with raster values
                                  sample_points_spdf <- methods::as(sample_points,
@@ -127,81 +153,27 @@ sample_points_list_1 <- lapply(X = sample_seeds,
                                  sample_points
                                })
 
-# Create the sampling frame that isn't the AOI
-frame_2 <- aoi_gen(xmax = raster_ncol,
+# Create the sampling frame that isn't the AOI to act as an intensification
+frame <- aoi_gen(xmax = raster_ncol,
                    xmin = 0,
                    ymax = raster_nrow,
                    ymin = 0,
                    n_vertices = frame_n_vertices,
                    convex_hull = frame_convex_hull,
                    seed_number = frame_seed)
-frame_2$raster_id <- raster_metadata$raster_id
-frame_2$frame_seed <- frame_seed
-frame_2$frame_id <- paste0(raster_metadata$raster_id,
+# Clip the frame to the AOI
+frame <- sf::st_intersection(x = frame,
+                            y = aoi)[, c("aoi_id", "aoi_seed")]
+frame$raster_id <- raster_metadata$raster_id
+frame$frame_seed <- frame_seed
+frame$frame_id <- paste0(raster_metadata$raster_id,
                            "-",
                            "frame_",
-                           frame_2$frame_seed)
+                           frame$frame_seed)
 
 # Generate sampling points for that frame, restricted to those that fall in the AOI
-sample_point_list_2 <- lapply(X = sample_seeds,
-                              frame = frame_2,
-                              aoi = aoi,
-                              sample_type = sample_type,
-                              n_points = n_sample_points,
-                              projection = projection,
-                              raster = current_raster,
-                              FUN = function(X,
-                                             frame,
-                                             aoi,
-                                             sample_type,
-                                             n_points,
-                                             projection,
-                                             raster){
-                                
-                                sample_points <- points_gen(frame = frame,
-                                                            sample_type = sample_type,
-                                                            n_points = n_points,
-                                                            seed_number = X,
-                                                            projection = projection)
-                                
-                                sample_point_indices_in_aoi <- as.vector(sf::st_intersects(x = aoi,
-                                                                                           y = sample_points,
-                                                                                           sparse = FALSE))
-                                
-                                sample_points <- sample_points[sample_point_indices_in_aoi, ]
-                                
-                                # Attribute them with raster values
-                                sample_points_spdf <- methods::as(sample_points,
-                                                                  "Spatial")
-                                
-                                raster_values <- raster::extract(x = raster,
-                                                                 y = sample_points_spdf)
-                                
-                                sample_points$value <- raster_values
-                                
-                                sample_points$frame_id <- unique(frame$frame_id)
-                                
-                                sample_points
-                              })
-
-# Create a third sampling frame that isn't the AOI
-frame_3 <- aoi_gen(xmax = raster_ncol,
-                   xmin = 0,
-                   ymax = raster_nrow,
-                   ymin = 0,
-                   n_vertices = frame_n_vertices,
-                   convex_hull = frame_convex_hull,
-                   seed_number = frame_seed * 2)
-frame_3$raster_id <- raster_metadata$raster_id
-frame_3$frame_seed <- frame_seed * 2
-frame_3$frame_id <- paste0(raster_metadata$raster_id,
-                           "-",
-                           "frame_",
-                           frame_3$frame_seed)
-
-# Generate sampling points for that frame, restricted to those that fall in the AOI
-sample_point_list_3 <- lapply(X = sample_seeds,
-                              frame = frame_3,
+sample_points_list_2 <- lapply(X = sample_seeds,
+                              frame = frame,
                               aoi = aoi,
                               sample_type = sample_type,
                               n_points = n_sample_points,
@@ -245,11 +217,10 @@ sample_point_list_3 <- lapply(X = sample_seeds,
 # So, for the first seed there was a draw for the AOI and each frame and those are put into the same
 # sf points object as the first object in this list
 sample_points_list <- mapply(X = sample_points_list_1,
-                             Y = sample_point_list_2,
-                             Z = sample_point_list_3,
+                             Y = sample_points_list_2,
                              SIMPLIFY = FALSE,
-                             FUN = function(X, Y, Z){
-                               rbind(X, Y, Z)
+                             FUN = function(X, Y){
+                               rbind(X, Y)
                              })
 
 #### Generate Thiessen polygons ####
@@ -320,13 +291,12 @@ thiessen_polygons <- do.call(rbind,
 #### Generate wgtcat polygons ####
 # Give both sets of polygons unique IDs in the same variable
 aoi$uid <- "aoi"
-frame_2$uid <- "frame_2"
-frame_3$uid <- "frame_3"
+frame$uid <- "frame"
+
 
 # Combine the polygons
 polygons <- rbind(aoi[, "uid"],
-                  frame_2[, "uid"],
-                  frame_3[, "uid"])
+                  frame[, "uid"])
 
 # Intersect them to create weight category polygons
 wgtcat_polygons <- wgtcat_gen(polygons,
@@ -379,13 +349,14 @@ sample_points_attributed_wgtcat <- do.call(rbind,
 
 #### Run weighted analysis ####
 sample_point_summary_thiessen_list <- lapply(X = sample_points_attributed_thiessen_list,
-                                             possible_values = raster_values,
+                                             possible_values = unique(as.vector(current_raster)),
                                              alpha = analysis_alpha,
                                              FUN = function(X,
                                                             possible_values,
                                                             alpha){
                                                sample_points <- X
-                                               sample_point_summary <- continuous_analysis(data = sample_points,
+                                               sample_point_summary <- categorical_analysis(data = sample_points,
+                                                                                            possible_values = possible_values,
                                                                                            alpha = alpha)
                                                sample_point_summary$sample_seed <- sample_points[["sample_seed"]][1]
                                                sample_point_summary$method <- "Thiessen"
@@ -397,14 +368,15 @@ sample_point_summary_thiessen <- do.call(rbind,
 
 
 sample_point_summary_wgtcat_list <- lapply(X = sample_points_attributed_wgtcat_list,
-                                           possible_values = raster_values,
+                                           possible_values = unique(as.vector(current_raster)),
                                            alpha = analysis_alpha,
                                            FUN = function(X,
                                                           possible_values,
                                                           alpha){
                                              sample_points <- X
-                                             sample_point_summary <- continuous_analysis(data = sample_points,
-                                                                                         alpha = alpha)
+                                             sample_point_summary <- categorical_analysis(data = sample_points,
+                                                                                          possible_values = possible_values,
+                                                                                          alpha = alpha)
                                              sample_point_summary$sample_seed <- sample_points[["sample_seed"]][1]
                                              sample_point_summary$method <- "WgtCat"
                                              sample_point_summary
@@ -416,6 +388,10 @@ sample_point_summary_wgtcat <- do.call(rbind,
 #### Summarize AOI ####
 raster_values_in_aoi <- unlist(raster::extract(x = current_raster,
                                                y = aoi))
+
+raster_values_in_wgtcat <- unlist(raster::extract(x = current_raster,
+                                                  # Because there will be no points in just the AOI, we eliminate those areas
+                                                  y = wgtcat_polygons[wgtcat_polygons$wgtcat_id != "1", ]))
 
 raster_summary <- switch(raster_type,
                          "categorical" = {
@@ -432,53 +408,94 @@ raster_summary <- switch(raster_type,
                          "continuous" = {
                            raster_mean <- mean(raster_values_in_aoi)
                            raster_sd <- sd(raster_values_in_aoi)
+                           raster_variance <- var(x = raster_values_in_aoi)
                            raster_summary <- data.frame(mean = raster_mean,
-                                                        sd = raster_sd)
+                                                        sd = raster_sd,
+                                                        variance = raster_variance)
                            raster_summary
                          })
 
+#### Run statistical tests ####
+# Categorical
+# Get the true values for the proportions added in
+# (so we can run the Wilcoxon signed rank test)
+results_test_thiessen <- sample_point_summary_thiessen
+results_test_thiessen$category <- paste(results_test_thiessen$value)
+raster_summary$proportion_true <- raster_summary$proportion
+results_test_thiessen <- merge(x = results_test_thiessen,
+                               y = raster_summary[, c("category", "proportion_true")])
+
+unweighted_proportion_wilcoxon <- wilcox.test(x = results_test_thiessen$proportion,
+                                              y = results_test_thiessen$proportion_true,
+                                              paired = TRUE)
+
+test <- lapply(X = split(results_test_thiessen, results_test_thiessen$category),
+               FUN = function(X){
+                 wilcox.test(x = X$proportion,
+                             y = X$proportion_true,
+                             paired = TRUE)
+               })
+
+thiessen_proportion_wilcoxon <- wilcox.test(x = results_test_thiessen$proportion_weighted,
+                                            y = results_test_thiessen$proportion_true,
+                                            paired = TRUE)
+
+results_test_wgtcat <- sample_point_summary_wgtcat
+results_test_wgtcat$category <- paste(results_test_wgtcat$value)
+results_test_wgtcat <- merge(x = results_test_wgtcat,
+                               y = raster_summary[, c("category", "proportion_true")])
+
+wgtcat_proportion_wilcoxon <- wilcox.test(x = results_test_wgtcat$proportion_weighted,
+                                            y = results_test_wgtcat$proportion_true,
+                                            paired = TRUE)
+
 #### Plot the results ####
-unweighted_results <- sample_point_summary_thiessen[, c("sample_seed", "n", "mean", "sd")]
+unweighted_results <- sample_point_summary_thiessen[, c("sample_seed", "value", "n", "proportion", "lower_bound", "upper_bound")]
 unweighted_results$weighted <- "Unweighted"
-weighted_thiessen_results <- sample_point_summary_thiessen[, c("sample_seed", "n", "mean_weighted", "sd_weighted")]
+weighted_thiessen_results <- sample_point_summary_thiessen[, c("sample_seed", "value", "n", "proportion_weighted", "lower_bound_weighted", "upper_bound_weighted")]
 weighted_thiessen_results$weighted <- "Weighted (Thiessen)"
 names(weighted_thiessen_results) <- names(unweighted_results)
-weighted_wgtcat_results <- sample_point_summary_wgtcat[, c("sample_seed", "n", "mean_weighted", "sd_weighted")]
+weighted_wgtcat_results <- sample_point_summary_wgtcat[, c("sample_seed", "value", "n", "proportion_weighted", "lower_bound_weighted", "upper_bound_weighted")]
 weighted_wgtcat_results$weighted <- "Weighted (WgtCat)"
 names(weighted_wgtcat_results) <- names(unweighted_results)
 
 results <- rbind(unweighted_results,
                  weighted_thiessen_results,
                  weighted_wgtcat_results)
-results$mean_true <- raster_summary$mean
-results$sd_true <- raster_summary$sd
+# results$mean_true <- raster_summary$mean
+# results$sd_true <- raster_summary$sd
+# results$variance_true <- raster_summary$variance
 results$raster_id <- raster_metadata$raster_id
 results$aoi_id <- aoi$aoi_id
+results$category <- paste(results$value)
+results <- merge(x = results,
+                 y = raster_summary[, c("category", "proportion_true")])
 
-
-# Boxplot of means
+# # Boxplot of means
 ggplot() +
   geom_boxplot(data = results,
-               aes(x = weighted,
-                   y = mean)) +
-  geom_hline(data = raster_summary,
-             aes(yintercept = mean),
-             color = "red")
-
-# Bounds
-ggplot() +
-  geom_segment(data = results,
-               aes(x = value,
-                   xend = value,
-                   y = lower_bound,
-                   yend = upper_bound),
-               size = 2,
-               alpha = 0.01) +
+               aes(x = category,
+                   y = proportion)) +
   geom_point(data = raster_summary,
              aes(x = category,
                  y = proportion),
              color = "red") +
   facet_wrap(~weighted)
+
+# # Bounds
+# ggplot() +
+#   geom_segment(data = results,
+#                aes(x = value,
+#                    xend = value,
+#                    y = lower_bound,
+#                    yend = upper_bound),
+#                size = 2,
+#                alpha = 0.01) +
+#   geom_point(data = raster_summary,
+#              aes(x = category,
+#                  y = proportion),
+#              color = "red") +
+#   facet_wrap(~weighted)
 
 #### Write out results ####
 # Raster
@@ -486,7 +503,10 @@ raster_output_path <- paste0(output_path,
                           "/",
                           "spatial",
                           "/",
-                          "raster.tif")
+                          "raster",
+                          "_",
+                          simulation_seed,
+                          ".tif")
 raster::writeRaster(current_raster,
                     filename = raster_output_path,
                     overwrite = TRUE)
@@ -497,7 +517,10 @@ aoi_output_path <- paste0(output_path,
                           "/",
                           "spatial",
                           "/",
-                          "aoi.shp")
+                          "aoi",
+                          "_",
+                          simulation_seed,
+                          ".shp")
 sf::st_write(aoi[, aoi_output_variables],
              dsn = aoi_output_path,
              driver = "ESRI Shapefile",
@@ -505,14 +528,15 @@ sf::st_write(aoi[, aoi_output_variables],
 
 # Sample frames
 frame_output_variables <- c("raster_id", "frame_id", "frame_seed")
-frames <- rbind(aoi,
-                frame_2,
-                frame_3)[, frame_output_variables]
+frames <- frame[, frame_output_variables]
 frame_output_path <- paste0(output_path,
                             "/",
                             "spatial",
                             "/",
-                            "frames.shp")
+                            "frames",
+                            "_",
+                            simulation_seed,
+                            ".shp")
 sf::st_write(frames[, frame_output_variables],
              dsn = frame_output_path,
              driver = "ESRI Shapefile",
@@ -524,7 +548,10 @@ thiessen_polygons_output_path <- paste0(output_path,
                                         "/",
                                         "spatial",
                                         "/",
-                                        "thiessen_polygons.shp")
+                                        "thiessen_polygons",
+                                        "_",
+                                        simulation_seed,
+                                        ".shp")
 sf::st_write(thiessen_polygons[, thiessen_polygons_output_variables],
              dsn = thiessen_polygons_output_path,
              driver = "ESRI Shapefile",
@@ -536,7 +563,10 @@ wgtcat_output_path <- paste0(output_path,
                              "/",
                              "spatial",
                              "/",
-                             "wgtcat.shp")
+                             "wgtcat",
+                             "_",
+                             simulation_seed,
+                             ".shp")
 sf::st_write(wgtcat_polygons[, wgtcat_output_variables],
              dsn = wgtcat_output_path,
              driver = "ESRI Shapefile",
@@ -561,18 +591,24 @@ sample_points_output_path <- paste0(output_path,
                                     "/",
                                     "spatial",
                                     "/",
-                                    "points.shp")
+                                    "points",
+                                    "_",
+                                    simulation_seed,
+                                    ".shp")
 sf::st_write(sample_points_attributed_combined,
              dsn = sample_points_output_path,
              driver = "ESRI Shapefile",
              append = FALSE)
 
 # Results
-results_output_variables <- c("raster_id", "aoi_id", "sample_seed", "weighted", "n", "mean", "sd", "mean_true", "sd_true")
+results_output_variables <- c("raster_id", "aoi_id", "sample_seed", "category", "weighted", "proportion", "lower_bound", "upper_bound", "proportion_true")
 results_output_path <- paste0(output_path,
                               "/",
                               "results",
                               "/",
-                              "results.csv")
+                              "results",
+                              "_",
+                              simulation_seed,
+                              ".csv")
 write.csv(x = results[, results_output_variables],
           file = results_output_path)

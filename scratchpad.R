@@ -1,11 +1,76 @@
+source("C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/workflow_multisample_oneframe_onethiessen_continuous.R")
+
+#### THRESHOLD ANALYSIS ####
+#' Check whether results are within a certain tolerance of the true value
+#' @param data Data frame. Must contain the variables \code{variable} and \code{comparison_variable}.
+#' @param varaible Character string. The name of the variable in \code{data} containing the values to check against the tolerance.
+#' @param comparison_variable Character string. The name of the variable in \code{data} containing the values to to use to calculate the tolerance.
+#' @param percent_tolerance Numeric. The percent difference from the value in \code{comparison_variable} that its paired value in \code{variable} is allowed to be.
+#' @returns Logical vector. The value is \code{TRUE} for any index where the value in \code{variable} was within the permitted tolerance and \code{FALSE} for all other indices.
+tolerance_test <- function(data,
+                           variable,
+                           comparison_variable,
+                           percent_tolerance = 5){
+  if (class(data != "data.frame")) {
+    stop("data must be a data frame")
+  }
+  if (nrow(data < 1)) {
+    stop("data must contain at least one row of values")
+  }
+  if (!(variable %in% names(data))) {
+    stop(paste0("The variable ", variable, " is missing from data"))
+  }
+  if (!(comparison_variable %in% names(data))) {
+    stop(paste0("The variable ", comparison_variable, " is missing from data"))
+  }
+  if (percent_tolerance < 0 | percent_tolerance > 100) {
+    stop("percent_tolerance must be a value between 0 and 100")
+  }
+  
+  proportion_tolerance <- percent_tolerance / 100
+  magnitude_tolerance <- abs(proportion_tolerance * data[[comparison_variable]])
+  magnitude_difference <- abs(data[[variable]] - data[[comparison_variable]])
+  magnitude_difference < magnitude_tolerance
+}
+
+#### PLOTS ####
 library(ggplot2)
+raster_plotting_df <- data.frame(raster::rasterToPoints(current_raster))
+raster_plotting_df$category <- paste(raster_plotting_df$layer)
+
+# Categorical
 ggplot() +
-  geom_sf(data = aoi) +
+  geom_raster(data = raster_plotting_df,
+              aes(x = x,
+                  y = y,
+                  fill = category)) +
+  scale_fill_viridis_d() +
+  geom_sf(data = aoi,
+          alpha = 0.25) +
   geom_sf(data = frame,
-          alpha = 0.5) +
-  geom_sf(data = sample_point_list[[1]])
+          alpha = 0.25) +
+  geom_sf(data = sample_points_list[[1]])
+
+# Continuous
+ggplot() +
+  geom_raster(data = raster_plotting_df,
+              aes(x = x,
+                  y = y,
+                  fill = layer)) +
+  scale_fill_viridis_c() +
+  geom_sf(data = aoi,
+          alpha = 0.25) +
+  geom_sf(data = frame,
+          alpha = 0.25) +
+  geom_sf(data = sample_points_list[[1]])
+
 
 #### WEIGHTED ANALYSIS OF CONTINUOUS VARIABLE ####
+test <- weighted_variance(values = sample_points_attributed_thiessen$value,
+                          weights = sample_points_attributed_thiessen$weight,
+                          na_remove = FALSE)
+
+
 data <- sample_points_attributed_list[[1]]
 alpha <- 0.2
 

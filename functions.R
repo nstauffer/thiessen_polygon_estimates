@@ -975,4 +975,96 @@ tolerance_test <- function(data,
   magnitude_difference <- abs(data[[variable]] - data[[comparison_variable]])
   magnitude_difference < magnitude_tolerance
 }
+
+
+#' Summarize the results of tolerance testing
+#' @param data Data frame. Must contain the variables \code{variable} and \code{comparison_variable}.
+#' @param varaible Character string. The name of the variable in \code{data} containing the values to check against the tolerance.
+#' @param comparison_variable Character string. The name of the variable in \code{data} containing the values to to use to calculate the tolerance.
+#' @param grouping_variables Vector of character strings. The names of variables to group the summary by. If \code{NULL} then all data will be summarized together. Defaults to \code{NULL}.
+#' @param percent_tolerance Numeric. The percent difference from the value in \code{comparison_variable} that its paired value in \code{variable} is allowed to be.
+tolerance_summary <- function(data,
+                              variable,
+                              comparison_variable,
+                              grouping_variables = NULL,
+                              percent_tolerance = 5){
+  if (class(data) != "data.frame") {
+    stop("data must be a data frame")
+  }
+  if (nrow(data) < 1) {
+    stop("data must contain at least one row of values")
+  }
+  if (!(variable %in% names(data))) {
+    stop(paste0("The variable ", variable, " is missing from data"))
+  }
+  if (!(comparison_variable %in% names(data))) {
+    stop(paste0("The variable ", comparison_variable, " is missing from data"))
+  }
+  if (percent_tolerance < 0 | percent_tolerance > 100) {
+    stop("percent_tolerance must be a value between 0 and 100")
+  }
+  missing_grouping_variables <- grouping_variables[!(grouping_variables %in% names(data))]
+  if (length(missing_grouping_variables) > 0){
+    stop(paste0("The following variables are missing from data: ", paste(missing_grouping_variables, collapse = ", ")))
+  }
+  
+  within_tolerance <- tolerance_test(data = data,
+                                     variable = variable,
+                                     comparison_variable = comparison_variable,
+                                     percent_tolerance = percent_tolerance)
+  threshold_var_name <- paste0("within_", percent_tolerance, "_percent")
+  data[[threshold_var_name]] <- within_tolerance
+  
+  
+  if (is.null(grouping_variables)) {
+    # How many sims are we looking at?
+    n_observations <- nrow(data)
+    # Which variable has the info about whether the tolerance was met or not?
+    var_name <- paste0("within_", percent_tolerance, "_percent")
+    # How many sims were within the tolerance?
+    within_tolerance_count <- sum(data[[var_name]])
+    # What's the proportion within the tolerance?
+    proportion_within_tolerance = within_tolerance_count / n_observations
+    # Gimme those results!
+    output <- data.frame(n_observations = n_observations,
+                         percent_tolerance = percent_tolerance,
+                         n_within_tolerance = within_tolerance_count,
+                         proportion_within_tolerance = proportion_within_tolerance)
+  } else {
+    split_list <- lapply(X = grouping_variables,
+                         data = data,
+                         FUN = function(X, data){
+                           data[[X]]
+                         })
+    data_list <- split(x = data,
+                       f = split_list)
+    
+    tolerance_list <- lapply(X = data_list,
+                             percent_tolerance = percent_tolerance,
+                             grouping_variables,
+                             FUN = function(X, percent_tolerance, grouping_variables){
+                               # How many sims are we looking at?
+                               n_observations <- nrow(X)
+                               # Which variable has the info about whether the tolerance was met or not?
+                               var_name <- paste0("within_", percent_tolerance, "_percent")
+                               # How many sims were within the tolerance?
+                               within_tolerance_count <- sum(X[[var_name]])
+                               # What's the proportion within the tolerance?
+                               proportion_within_tolerance = within_tolerance_count / n_observations
+                               # Gimme those results!
+                               output <- data.frame(n_observations = n_observations,
+                                                    percent_tolerance = percent_tolerance,
+                                                    n_within_tolerance = within_tolerance_count,
+                                                    proportion_within_tolerance = proportion_within_tolerance)
+                               
+                               for (variable in grouping_variables) {
+                                 output[[variable]] <- data[[variable]][1]
+                               }
+                               
+                               output[, c(grouping_variables, "n_observations", "percent_tolerance", "n_within_tolerance", "proportion_within_tolerance")]
+                             })
+    output <- do.call(rbind,
+                      tolerance_list)
+  }
+  return(output)
 }

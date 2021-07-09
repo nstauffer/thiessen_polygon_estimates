@@ -1,22 +1,63 @@
-##### SIMULATE ####
+#### Get the functions loaded ####
+source("C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/functions.R")
+
+##### CONFIGURATION ####
 n_sims <- 26
 sim_seed_offset <- 50
 
 # Find the sim files
-sim_files <- list.files(path = "C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/simulations/intensification_categorical/code/",
-                        pattern = "\\.[rR]",
-                        full.names = TRUE)
+sim_file <- paste0("C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/code/",
+                   "workflow_multisample_oneframe_intensification_onethiessen_categorical.R")
 
+# Simluation
+projection <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
+output_path <- "C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/simulations/intensification_categorical/output/"
+
+# Raster
+raster_type <- "categorical"
+raster_ncol <- 1000
+raster_nrow <- 1000
+raster_resolution = 1
+raster_autocorr_range = 50
+raster_mag_var = 10
+raster_nug = 0.2
+raster_mean = 1
+raster_rescale = TRUE
+raster_n_categories <- 3
+
+# AOI
+aoi_n_vertices <- 6
+aoi_convex_hull <- TRUE
+
+# Sample
+frame_n_vertices <- 6
+frame_convex_hull <- TRUE
+sample_type <- "simple"
+n_sample_points <- 25
+sample_seeds <- 1:99
+
+# Thiessen polygons
+thiessen_distribution <- "simple"
+thiessen_n_polygons <- 5
+thiessen_minimum_sample <- 2
+
+# Analysis
+analysis_alpha <- 0.05
+
+#### SIMULATE ####
 # Run the sims
 for (simulation_seed in (1 + sim_seed_offset):(n_sims + sim_seed_offset)) {
-  source(sim_files)
+  raster_seed <- 420 * simulation_seed
+  aoi_seed <- 1123 * simulation_seed
+  frame_seed <- 111 * simulation_seed
+  source(sim_file)
 }
 
 beepr::beep(5)
 
 #### READ IN RESULTS ####
 # Find the results files
-results_files <- list.files(path = "C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/simulations/intensification_categorical/output/results",
+results_files <- list.files(path = paste0(output_path, "/results"),
                             pattern = "\\.(csv|CSV)$",
                             full.names = TRUE)
 
@@ -92,7 +133,7 @@ wilcoxon_results_list <- lapply(X = results_list,
 wilcoxon_results <- do.call(rbind,
                             wilcoxon_results_list)
 # Identify the ones that were "distinguishable", that is, have a p value > our alpha (0.05)
-wilcoxon_results$indistinguishable <- wilcoxon_results$p_value > 0.05
+wilcoxon_results$indistinguishable <- wilcoxon_results$p_value > analysis_alpha
 
 # Summarize the counts of "accurate" versus "inaccurate" sims
 wilcoxon_results_summary <- as.data.frame(cbind(table(wilcoxon_results$weighting[wilcoxon_results$indistinguishable]),

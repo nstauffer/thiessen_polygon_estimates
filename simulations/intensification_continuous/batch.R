@@ -1,22 +1,65 @@
+#### Get the functions loaded ####
+source("C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/functions.R")
+
+#### CONFIGURATION ####
+n_sims <- 50
+sim_seed_offset <- 94
+
+sim_file <- "C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/code/workflow_multisample_oneframe_onethiessen_continuous.R"
+
+# Simulation
+projection <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
+output_path <- paste0("C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/simulations/",
+                      "intensification_continuous",
+                      "/output/")
+
+# Raster
+raster_type <- "continuous"
+raster_ncol <- 1000
+raster_nrow <- 1000
+raster_resolution = 1
+raster_autocorr_range = 50
+raster_mag_var = 10
+raster_nug = 0.2
+raster_mean = 1
+raster_rescale = TRUE
+
+
+# AOI
+aoi_n_vertices <- 6
+aoi_convex_hull <- TRUE
+
+
+# Sample
+frame_n_vertices <- 6
+frame_convex_hull <- TRUE
+sample_type <- "simple"
+n_sample_points <- 25
+sample_seeds <- 1:99
+
+# Thiessen polygons
+thiessen_distribution <- "simple"
+thiessen_n_polygons <- 5
+thiessen_minimum_sample <- 2
+
+# Analysis
+analysis_alpha <- 0.05
+percent_threshold <- 5
+
 ##### SIMULATE ####
-n_sims <- 4
-sim_seed_offset <- 69
-
-# Find the sim files
-sim_files <- list.files(path = "C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/simulations/intensification_continuous/code/",
-                        pattern = "\\.[rR]",
-                        full.names = TRUE)
-
 # Run the sims
 for (simulation_seed in (1 + sim_seed_offset):(n_sims + sim_seed_offset)) {
-  source(sim_files)
+  raster_seed <- 420 * simulation_seed
+  aoi_seed <- 1123 * simulation_seed
+  frame_seed <- 111 * simulation_seed
+  source(sim_file)
 }
 
 beepr::beep(5)
 
 #### READ IN RESULTS ####
 # Find the results files
-results_files <- list.files(path = "C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/simulations/intensification_continuous/output/results",
+results_files <- list.files(path = paste0(output_path, "/results"),
                             pattern = "\\.(csv|CSV)$",
                             full.names = TRUE)
 
@@ -69,3 +112,77 @@ ggplot() +
 
 
 #### TEST ####
+# This is testing within each simulation run if the calculated proportions are distinguishable from the true proportions
+# Start off by splitting by sim run and weighting approach
+results_list <- split(full_results,
+                      list(full_results$sim_id, full_results$weighted))
+# For each weighting approach in each simulation run, run the wilcoxon ranked sign test for each category
+wilcoxon_results_list <- lapply(X = results_list,
+                                FUN = function(X){
+                                  
+                                  wilcoxon_results <- wilcox.test(x = X$mean,
+                                                                  y = X$mean_true,
+                                                                  paired = TRUE)
+                                  wilcoxon_results <- data.frame(weighting = X$weighted[1],
+                                                                 sim_id = X$sim_id[1],
+                                                                 p_value = wilcoxon_results$p.value)
+                                  wilcoxon_results
+                                })
+# Combine results
+wilcoxon_results <- do.call(rbind,
+                            wilcoxon_results_list)
+# Identify the ones that were "distinguishable", that is, have a p value > our alpha (0.05)
+wilcoxon_results$indistinguishable <- wilcoxon_results$p_value > analysis_alpha
+
+# Summarize the counts of "accurate" versus "inaccurate" sims
+wilcoxon_results_summary <- as.data.frame(cbind(table(wilcoxon_results$weighting[wilcoxon_results$indistinguishable]),
+                                                table(wilcoxon_results$weighting[!wilcoxon_results$indistinguishable])))
+names(wilcoxon_results_summary) <- c("n_indistinguishable_prediction", "n_distinguishable_prediction")
+wilcoxon_results_summary$weighting <- names(table(wilcoxon_results$weighting[wilcoxon_results$accurate]))
+# Add in a proportion that were indistinguishable from the true proportion
+wilcoxon_results_summary$proportion_indistinguishable <- apply(X = wilcoxon_results_summary,
+                                                               MARGIN = 1,
+                                                               FUN = function(X){
+                                                                 total <- X[["n_indistinguishable_prediction"]] +  X[["n_distinguishable_prediction"]]
+                                                                 X[["n_indistinguishable_prediction"]] /  total
+                                                               })
+
+# Okay, but what about setting some kind of difference threshold????
+within_tolerance <- tolerance_test(data = full_results,
+                       variable = "mean",
+                       comparison_variable = "mean_true",
+                       percent_tolerance = percent_threshold)
+
+threshold_var_name <- paste0("within_", percent_threshold, "_percent")
+full_results[[threshold_var_name]] <- within_tolerance
+
+threshold_list <- lapply(X = split(full_results, full_results$weighted),
+                         percent_threshold = percent_threshold,
+                         FUN = function(X, percent_threshold){
+                           # How many sims are we looking at?
+                           n_observations <- nrow(X)
+                           # Which variable has the info about whether the threshold was met or not?
+                           var_name <- paste0("within_", percent_threshold, "_percent")
+                           # How many sims were within the threshold?
+                           within_tolerance_count <- sum(X[[var_name]])
+                           # What's the proportion within the threshold?
+                           proportion_within_tolerance = within_tolerance_count / n_observations
+                           # Gimme those results!
+                           data.frame(weighting = X[["weighted"]][1],
+                                      n_sims = n_observations,
+                                      percent_threshold = percent_threshold,
+                                      n_within_tolerance = within_tolerance_count,
+                                      proportion_within_tolerance = proportion_within_tolerance)
+                         })
+
+threshold_results <- do.call(rbind,
+                             threshold_list)
+# Plot the results to look for weird distributions
+ggplot(full_results) +
+  geom_point(aes(x = proportion,
+                 y = proportion_true,
+                 color = sim_id),
+             alpha = 0.1) +
+  geom_abline(slope = 1,
+              intercept = 0) +
+  facet_wrap(~weighted)

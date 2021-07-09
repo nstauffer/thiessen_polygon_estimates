@@ -943,3 +943,36 @@ weighted_variance <- function(values,
                                                                                    na.rm = na_remove)
   return(variance)
 }
+
+#' Check whether results are within a certain tolerance of the true value
+#' @param data Data frame. Must contain the variables \code{variable} and \code{comparison_variable}.
+#' @param varaible Character string. The name of the variable in \code{data} containing the values to check against the tolerance.
+#' @param comparison_variable Character string. The name of the variable in \code{data} containing the values to to use to calculate the tolerance.
+#' @param percent_tolerance Numeric. The percent difference from the value in \code{comparison_variable} that its paired value in \code{variable} is allowed to be.
+#' @returns Logical vector. The value is \code{TRUE} for any index where the value in \code{variable} was within the permitted tolerance and \code{FALSE} for all other indices.
+tolerance_test <- function(data,
+                           variable,
+                           comparison_variable,
+                           percent_tolerance = 5){
+  if (class(data) != "data.frame") {
+    stop("data must be a data frame")
+  }
+  if (nrow(data) < 1) {
+    stop("data must contain at least one row of values")
+  }
+  if (!(variable %in% names(data))) {
+    stop(paste0("The variable ", variable, " is missing from data"))
+  }
+  if (!(comparison_variable %in% names(data))) {
+    stop(paste0("The variable ", comparison_variable, " is missing from data"))
+  }
+  if (percent_tolerance < 0 | percent_tolerance > 100) {
+    stop("percent_tolerance must be a value between 0 and 100")
+  }
+  
+  proportion_tolerance <- percent_tolerance / 100
+  magnitude_tolerance <- abs(proportion_tolerance * data[[comparison_variable]])
+  magnitude_difference <- abs(data[[variable]] - data[[comparison_variable]])
+  magnitude_difference < magnitude_tolerance
+}
+}

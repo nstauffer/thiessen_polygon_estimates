@@ -5,71 +5,53 @@ library(ggplot2)
 source("C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/functions.R")
 
 #### Set the config ####
-# Simluation
-projection <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
-output_path <- "C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/simulations/intensification_categorical/output/"
-# simulation_seed <- 1
-
-# Raster
-raster_type <- "categorical"
-raster_ncol <- 1000
-raster_nrow <- 1000
-raster_resolution = 1
-raster_autocorr_range = 50
-raster_mag_var = 10
-raster_nug = 0.2
-raster_mean = 1
-raster_rescale = TRUE
-raster_seed <- 420 * simulation_seed
-raster_n_categories <- 3
-
-# AOI
-aoi_n_vertices <- 6
-aoi_convex_hull <- TRUE
-aoi_seed <- 1123 * simulation_seed
-
-# Sample
-frame_seed <- 111 * simulation_seed
-frame_n_vertices <- 6
-frame_convex_hull <- TRUE
-sample_type <- "simple"
-n_sample_points <- 25
-sample_seeds <- 1:99
-
-# Thiessen polygons
-thiessen_distribution <- "simple"
-thiessen_proportion <- 0.2
-thiessen_seed <- 96
-thiessen_minimum_sample <- 2
-
-# Analysis
-analysis_alpha <- 0.05
+# # Simluation
+# projection <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
+# output_path <- "C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/simulations/intensification_continuous/output/"
+# # simulation_seed <- 1
+# 
+# # Raster
+# raster_type <- "continuous"
+# raster_ncol <- 1000
+# raster_nrow <- 1000
+# raster_resolution = 1
+# raster_autocorr_range = 50
+# raster_mag_var = 10
+# raster_nug = 0.2
+# raster_mean = 1
+# raster_rescale = TRUE
+# raster_seed <- 420 * simulation_seed
+# 
+# # AOI
+# aoi_n_vertices <- 6
+# aoi_convex_hull <- TRUE
+# aoi_seed <- 1123 * simulation_seed
+# 
+# # Sample
+# frame_seed <- 111 * simulation_seed
+# frame_n_vertices <- 6
+# frame_convex_hull <- TRUE
+# sample_type <- "simple"
+# n_sample_points <- 50
+# sample_seeds <- 1:199
+# 
+# # Thiessen polygons
+# thiessen_distribution <- "simple"
+# thiessen_n_polygons <- 5
+# thiessen_seed <- 96
+# thiessen_minimum_sample <- 2
+# 
+# # Analysis
+# analysis_alpha <- 0.05
 
 #### Generate a raster ####
 current_raster <- switch(raster_type,
                          "categorical" = {
-                           raster <- NLMR::nlm_gaussianfield(ncol = raster_ncol,
-                                                             nrow = raster_nrow,
-                                                             resolution = raster_resolution,
-                                                             autocorr_range = raster_autocorr_range,
-                                                             mag_var = raster_mag_var,
-                                                             nug = raster_nug,
-                                                             mean = raster_mean,
-                                                             user_seed = raster_seed,
-                                                             rescale = raster_rescale)
-                           raster::projection(raster) <- projection
-                           
-                           # Figure out the ranges of raster values for each category (assuming that they've got equal ranges)
-                           # and write those into the raster
-                           raster_category_increment <- 1 / raster_n_categories
-                           # Note that we go from largest to smalles so that we don't accidentally overwrite category 1
-                           # when we get to the highest number category which has an upper limit of 1
-                           for (category in raster_n_categories:1) {
-                             current_category_min <- (category - 1) * raster_category_increment
-                             current_category_max <- category * raster_category_increment
-                             raster[raster >= current_category_min & raster <= current_category_max] <- category
-                           }
-                           raster
+                           landscape_gen_categorical(categories =  raster_values,
+                                                     ncol = raster_ncol,
+                                                     nrow = raster_nrow,
+                                                     seed_number = raster_seed,
+                                                     projection = NULL)
                          },
                          "continuous" = {
                            raster <- NLMR::nlm_gaussianfield(ncol = raster_ncol,
@@ -226,7 +208,7 @@ sample_points_list <- mapply(X = sample_points_list_1,
 #### Generate Thiessen polygons ####
 sample_points_attributed_thiessen_list_list <- lapply(X = sample_points_list,
                                                       frame = aoi,
-                                                      n_polygons = round(n_sample_points * thiessen_proportion),
+                                                      n_polygons = thiessen_n_polygons,
                                                       points = sample_points,
                                                       points_min = thiessen_minimum_sample,
                                                       seed_number = thiessen_seed,
@@ -349,14 +331,13 @@ sample_points_attributed_wgtcat <- do.call(rbind,
 
 #### Run weighted analysis ####
 sample_point_summary_thiessen_list <- lapply(X = sample_points_attributed_thiessen_list,
-                                             possible_values = unique(as.vector(current_raster)),
+                                             possible_values = raster_values,
                                              alpha = analysis_alpha,
                                              FUN = function(X,
                                                             possible_values,
                                                             alpha){
                                                sample_points <- X
-                                               sample_point_summary <- categorical_analysis(data = sample_points,
-                                                                                            possible_values = possible_values,
+                                               sample_point_summary <- continuous_analysis(data = sample_points,
                                                                                            alpha = alpha)
                                                sample_point_summary$sample_seed <- sample_points[["sample_seed"]][1]
                                                sample_point_summary$method <- "Thiessen"
@@ -368,15 +349,14 @@ sample_point_summary_thiessen <- do.call(rbind,
 
 
 sample_point_summary_wgtcat_list <- lapply(X = sample_points_attributed_wgtcat_list,
-                                           possible_values = unique(as.vector(current_raster)),
+                                           possible_values = raster_values,
                                            alpha = analysis_alpha,
                                            FUN = function(X,
                                                           possible_values,
                                                           alpha){
                                              sample_points <- X
-                                             sample_point_summary <- categorical_analysis(data = sample_points,
-                                                                                          possible_values = possible_values,
-                                                                                          alpha = alpha)
+                                             sample_point_summary <- continuous_analysis(data = sample_points,
+                                                                                         alpha = alpha)
                                              sample_point_summary$sample_seed <- sample_points[["sample_seed"]][1]
                                              sample_point_summary$method <- "WgtCat"
                                              sample_point_summary
@@ -415,72 +395,88 @@ raster_summary <- switch(raster_type,
                            raster_summary
                          })
 
+raster_summary_wgtcat <- switch(raster_type,
+                         "categorical" = {
+                           # Count the number of cells in each category
+                           category_counts <- table(raster_values_in_wgtcat)
+                           # Make that into a data frame
+                           raster_summary <- data.frame(category = names(category_counts),
+                                                        n = as.vector(category_counts),
+                                                        stringsAsFactors = FALSE)
+                           # Calculate the proportions
+                           raster_summary$proportion <- raster_summary$n / sum(raster_summary$n)
+                           raster_summary
+                         },
+                         "continuous" = {
+                           raster_mean <- mean(raster_values_in_wgtcat)
+                           raster_sd <- sd(raster_values_in_wgtcat)
+                           raster_variance <- var(x = raster_values_in_wgtcat)
+                           raster_summary <- data.frame(mean = raster_mean,
+                                                        sd = raster_sd,
+                                                        variance = raster_variance)
+                           raster_summary
+                         })
+
 #### Run statistical tests ####
-# Categorical
-# Get the true values for the proportions added in
-# (so we can run the Wilcoxon signed rank test)
+# Continuous
 results_test_thiessen <- sample_point_summary_thiessen
-results_test_thiessen$category <- paste(results_test_thiessen$value)
-raster_summary$proportion_true <- raster_summary$proportion
-results_test_thiessen <- merge(x = results_test_thiessen,
-                               y = raster_summary[, c("category", "proportion_true")])
+results_test_thiessen$mean_raster <- raster_summary$mean
+results_test_thiessen$sd_raster <- raster_summary$sd
+results_test_thiessen$variance_raster <- raster_summary$variance
 
-unweighted_proportion_wilcoxon <- wilcox.test(x = results_test_thiessen$proportion,
-                                              y = results_test_thiessen$proportion_true,
-                                              paired = TRUE)
-
-test <- lapply(X = split(results_test_thiessen, results_test_thiessen$category),
-               FUN = function(X){
-                 wilcox.test(x = X$proportion,
-                             y = X$proportion_true,
+thiessen_mean_wilcoxon <- wilcox.test(x = results_test_thiessen$mean_weighted,
+                             y = results_test_thiessen$mean_raster,
                              paired = TRUE)
-               })
-
-thiessen_proportion_wilcoxon <- wilcox.test(x = results_test_thiessen$proportion_weighted,
-                                            y = results_test_thiessen$proportion_true,
-                                            paired = TRUE)
+thiessen_sd_wilcoxon <- wilcox.test(x = results_test_thiessen$sd_weighted,
+                           y = results_test_thiessen$sd_raster,
+                           paired = TRUE)
+thiessen_variance_wilcoxon <- wilcox.test(x = results_test_thiessen$variance_weighted,
+                                 y = results_test_thiessen$variance_raster,
+                                 paired = TRUE)
 
 results_test_wgtcat <- sample_point_summary_wgtcat
-results_test_wgtcat$category <- paste(results_test_wgtcat$value)
-results_test_wgtcat <- merge(x = results_test_wgtcat,
-                               y = raster_summary[, c("category", "proportion_true")])
+results_test_wgtcat$mean_raster <- raster_summary$mean
+results_test_wgtcat$sd_raster <- raster_summary$sd
+results_test_wgtcat$variance_raster <- raster_summary$variance
 
-wgtcat_proportion_wilcoxon <- wilcox.test(x = results_test_wgtcat$proportion_weighted,
-                                            y = results_test_wgtcat$proportion_true,
-                                            paired = TRUE)
+wgtcat_mean_wilcoxon <- wilcox.test(x = results_test_wgtcat$mean_weighted,
+                                      y = results_test_wgtcat$mean_raster,
+                                      paired = TRUE)
+wgtcat_sd_wilcoxon <- wilcox.test(x = results_test_wgtcat$sd_weighted,
+                                    y = results_test_wgtcat$sd_raster,
+                                    paired = TRUE)
+wgtcat_variance_wilcoxon <- wilcox.test(x = results_test_wgtcat$variance_weighted,
+                                          y = results_test_wgtcat$variance_raster,
+                                          paired = TRUE)
 
 #### Plot the results ####
-unweighted_results <- sample_point_summary_thiessen[, c("sample_seed", "value", "n", "proportion", "lower_bound", "upper_bound")]
+unweighted_results <- sample_point_summary_thiessen[, c("sample_seed", "n", "mean", "sd", "variance")]
 unweighted_results$weighted <- "Unweighted"
-weighted_thiessen_results <- sample_point_summary_thiessen[, c("sample_seed", "value", "n", "proportion_weighted", "lower_bound_weighted", "upper_bound_weighted")]
+weighted_thiessen_results <- sample_point_summary_thiessen[, c("sample_seed", "n", "mean_weighted", "sd_weighted", "variance_weighted")]
 weighted_thiessen_results$weighted <- "Weighted (Thiessen)"
 names(weighted_thiessen_results) <- names(unweighted_results)
-weighted_wgtcat_results <- sample_point_summary_wgtcat[, c("sample_seed", "value", "n", "proportion_weighted", "lower_bound_weighted", "upper_bound_weighted")]
+weighted_wgtcat_results <- sample_point_summary_wgtcat[, c("sample_seed", "n", "mean_weighted", "sd_weighted", "variance_weighted")]
 weighted_wgtcat_results$weighted <- "Weighted (WgtCat)"
 names(weighted_wgtcat_results) <- names(unweighted_results)
 
 results <- rbind(unweighted_results,
                  weighted_thiessen_results,
                  weighted_wgtcat_results)
-# results$mean_true <- raster_summary$mean
-# results$sd_true <- raster_summary$sd
-# results$variance_true <- raster_summary$variance
+results$mean_true <- raster_summary$mean
+results$sd_true <- raster_summary$sd
+results$variance_true <- raster_summary$variance
 results$raster_id <- raster_metadata$raster_id
 results$aoi_id <- aoi$aoi_id
-results$category <- paste(results$value)
-results <- merge(x = results,
-                 y = raster_summary[, c("category", "proportion_true")])
+
 
 # # Boxplot of means
-ggplot() +
-  geom_boxplot(data = results,
-               aes(x = category,
-                   y = proportion)) +
-  geom_point(data = raster_summary,
-             aes(x = category,
-                 y = proportion),
-             color = "red") +
-  facet_wrap(~weighted)
+# ggplot() +
+#   geom_boxplot(data = results,
+#                aes(x = weighted,
+#                    y = mean)) +
+#   geom_hline(data = raster_summary,
+#              aes(yintercept = mean),
+#              color = "red")
 
 # # Bounds
 # ggplot() +
@@ -601,7 +597,7 @@ sf::st_write(sample_points_attributed_combined,
              append = FALSE)
 
 # Results
-results_output_variables <- c("raster_id", "aoi_id", "sample_seed", "category", "weighted", "proportion", "lower_bound", "upper_bound", "proportion_true")
+results_output_variables <- c("raster_id", "aoi_id", "sample_seed", "weighted", "n", "mean", "sd", "variance", "mean_true", "sd_true", "variance_true")
 results_output_path <- paste0(output_path,
                               "/",
                               "results",

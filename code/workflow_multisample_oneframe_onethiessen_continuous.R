@@ -317,6 +317,18 @@ sample_points_attributed_wgtcat_list <- lapply(X = sample_points_list,
                                                                               n_points = as.vector(wgtcat_summary),
                                                                               stringsAsFactors = FALSE)
                                                  
+                                                 # What if no points fall in a weight category????
+                                                 missing_wgtcats <- wgtcat_polygons$wgtcat_id[!(wgtcat_polygons$wgtcat_id %in% wgtcat_summary$wgtcat_id)]
+                                                 
+                                                 if (length(missing_wgtcats) > 0) {
+                                                   missing_wgtcats_summary <- data.frame(wgtcat_id = missing_wgtcats,
+                                                                                         n_points = 0,
+                                                                                         stringsAsFactors = FALSE)
+                                                   wgtcat_summary <- rbind(wgtcat_summary,
+                                                                           missing_wgtcats_summary)
+                                                 }
+                                                 
+                                                 
                                                  # Add the point counts to wgtcat_polygons
                                                  wgtcat_polygons <- merge(x = wgtcat_polygons,
                                                                           y = wgtcat_summary,

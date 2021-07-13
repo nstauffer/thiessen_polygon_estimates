@@ -61,7 +61,7 @@ current_raster <- switch(raster_type,
                            # Figure out the ranges of raster values for each category (assuming that they've got equal ranges)
                            # and write those into the raster
                            raster_category_increment <- 1 / raster_n_categories
-                           # Note that we go from largest to smalles so that we don't accidentally overwrite category 1
+                           # Note that we go from largest to smallest so that we don't accidentally overwrite category 1
                            # when we get to the highest number category which has an upper limit of 1
                            for (category in raster_n_categories:1) {
                              current_category_min <- (category - 1) * raster_category_increment

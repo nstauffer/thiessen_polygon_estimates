@@ -2,10 +2,12 @@
 #' @description Generate Thiessen/Voronoi polygons for a set of points and clip the results using a set of polygons
 #' @param centroids An sf points object. These points are used as centroids for the Thiessen/Voronoi polygons.
 #' @param frame An sf polygon or multipolygon object. This is the clipping boundary which will be applied to the otherise "infinite" Thiessen/Voronoi polygons.
+#' @param envelope An sfc polygon object. This will be the outer envelope for the Thiessen polygons before they're clipped to \code{frame}. This will only be applied if it's larger than the default envelope in \code{sf::st_voronoi()}. If \code{NULL} then the default envelope will be used. Defaults to \code{NULL}.
 #' @param use_albers Logical. If \code{TRUE} then \code{centroids} and \code{frame} will be reprojected into Albers Equal Area (AEA) and the output will be in AEA. If \code{FALSE} then \code{frame} will be reprojected to match the coordinate reference ssytem (CRS) of \code{centroids} and the output will be in that CRS. CRSs using decimal degrees will throw errors or warnings. Defaults to \code{TRUE}.
 #' @return An sf object composed of polygon or multipolygon geometry
 thiessen_polygons_gen_fixed <- function(centroids,
                                         frame,
+                                        envelope = NULL,
                                         seed_number = 420,
                                         use_albers = TRUE){
   # Define Alber's Equal Area CRS
@@ -21,6 +23,14 @@ thiessen_polygons_gen_fixed <- function(centroids,
     stop("frame must be an sf polygon object")
   } else if (!all(sf::st_geometry_type(frame) %in% c("POLYGON", "MULTIPOLYGON"))){
     stop("frame must be an sf polygon object")
+  }
+  
+  if (!is.null(envelope)) {
+    if (!("sfc" %in% class(envelope))) {
+      stop("envelope must be an sfc polygon object")
+    } else if (!all(sf::st_geometry_type(envelope) %in% c("POLYGON", "MULTIPOLYGON"))){
+      stop("envelope must be an sfc polygon object")
+    }
   }
   
   # Remove any Z dimension
@@ -48,12 +58,16 @@ thiessen_polygons_gen_fixed <- function(centroids,
   # The points need to be a multipoint object, apparently
   points_multipoint <- sf::st_combine(sf::st_geometry(centroids))
   
-  # Generate the Thiessen polygons, not bothering to try to use the sample frame as an envelope
-  # This is because it ignores the envelope argument if the envelope polygons are smaller than the default boundaries
-  # (and they probably will be)
+  # Generate the Thiessen polygons
+  # If there's a provided envelope, we attempt to use it
   # This appears to be a list??? It's fine, I promise. We'll convert it in a bit
-  thiessen_polygons_raw <- sf::st_voronoi(points_multipoint)
-  
+  if (is.null(envelope)) {
+    thiessen_polygons_raw <- sf::st_voronoi(points_multipoint)
+  } else {
+    thiessen_polygons_raw <- sf::st_voronoi(points_multipoint,
+                                            envelope = envelope)
+  }
+
   # This is making sure that we only have polygon features
   # No idea why this is necessary, but without it all kinds of geometry errors pop up at clipping
   thiessen_polygons_raw <- sf::st_collection_extract(thiessen_polygons_raw,
@@ -62,7 +76,7 @@ thiessen_polygons_gen_fixed <- function(centroids,
   # Convert the polygons to an sf object
   # Finally, something comfortingly familiar
   thiessen_polygons <- sf::st_sf(thiessen_polygons_raw)
-  
+
   # Clip to sample frame
   thiessen_polygons_clipped <- sf::st_intersection(x = thiessen_polygons,
                                                    y = frame)
@@ -82,6 +96,7 @@ thiessen_polygons_gen_fixed <- function(centroids,
 #' @param n_polygons Numeric value. The number of Thiessen polygons to draw within the frame.
 #' @param points Optional sf point object. If provided, then the Thiessen polygons will be redrawn with new random seeds until each contains at least \code{points_min} of these points. Defaults to \code{NULL}.
 #' @param points_min Optional numeric value. If \code{points} is not \code{NULL} then this is the minimum number of points that each Thiessen polygon will contain. Defaults to \code{2}.
+#' @param envelope An sfc polygon object. This will be the outer envelope for the Thiessen polygons before they're clipped to \code{frame}. This will only be applied if it's larger than the default envelope in \code{sf::st_voronoi()}. If \code{NULL} then the default envelope will be used. Defaults to \code{NULL}.
 #' @param seed_number Optional numeric value. The seed number to use for generating the polygon centroids. A random seed will be used if this is \code{NULL}. Defaults to \code{NULL}.
 #' @param seed_increment Optional numeric value. If attempting to produce polygons with \code{points_min} points from \code{points} in each polygon, this is the step to increment \code{seed_number} by on each attempt. Defaults to \code{100000}.
 #' @param use_albers Logical. If \code{TRUE} then \code{centroids} and \code{frame} will be reprojected into Albers Equal Area (AEA) and the output will be in AEA. If \code{FALSE} then everything will be reprojected to match the coordinate reference system (CRS) of \code{frame} and the output will be in that CRS. CRSs using decimal degrees will throw errors or warnings. Defaults to \code{TRUE}.
@@ -91,6 +106,7 @@ thiessen_polygons_gen_random <- function(frame,
                                          n_polygons,
                                          points = NULL,
                                          points_min = 2,
+                                         envelope = NULL,
                                          seed_number = NULL,
                                          seed_increment = 100000,
                                          use_albers = TRUE,
@@ -159,6 +175,7 @@ thiessen_polygons_gen_random <- function(frame,
   # Draw Thiessen polygons
   thiessen_polygons <- thiessen_polygons_gen_fixed(centroids = centroids,
                                                    frame = frame,
+                                                   envelope = envelope,
                                                    seed_number = seed_number,
                                                    use_albers = FALSE)
   
@@ -193,6 +210,7 @@ thiessen_polygons_gen_random <- function(frame,
       
       thiessen_polygons <- thiessen_polygons_gen_fixed(centroids = centroids,
                                                        frame = frame,
+                                                       envelope = envelope,
                                                        seed_number = seed_number,
                                                        use_albers = FALSE)
       

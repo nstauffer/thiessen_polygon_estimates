@@ -195,6 +195,19 @@ thiessen_polygons_gen_random <- function(frame,
                                 n_points = as.vector(table(points_attributed$tpoly_id)),
                                 stringsAsFactors = FALSE)
     
+    # But what if there were polygons with no points at all?????
+    missing_tpoly_ids <- unique(thiessen_polygons$tpoly_id)[!(unique(thiessen_polygons$tpoly_id) %in% tpoly_summary$tpoly_id)]
+    
+    if (length(missing_tpoly_ids) > 0) {
+      missing_tpoly_summary <- data.frame(tpoly_id = missing_tpoly_ids,
+                                          n_points = 0,
+                                          stringsAsFactors = FALSE)
+      
+      tpoly_summary <- rbind(tpoly_summary,
+                             missing_tpoly_summary)
+    }
+
+    
     while (!all(tpoly_summary[["n_points"]] >= points_min)) {
       seed_number <- seed_number + seed_increment
       if (verbose) {
@@ -229,6 +242,17 @@ thiessen_polygons_gen_random <- function(frame,
       tpoly_summary <- data.frame(tpoly_id = names(table(points_attributed$tpoly_id)),
                                   n_points = as.vector(table(points_attributed$tpoly_id)),
                                   stringsAsFactors = FALSE)
+      # But what if there were polygons with no points at all?????
+      missing_tpoly_ids <- unique(thiessen_polygons$tpoly_id)[!(unique(thiessen_polygons$tpoly_id) %in% tpoly_summary$tpoly_id)]
+      
+      if (length(missing_tpoly_ids) > 0) {
+        missing_tpoly_summary <- data.frame(tpoly_id = missing_tpoly_ids,
+                                            n_points = 0,
+                                            stringsAsFactors = FALSE)
+        
+        tpoly_summary <- rbind(tpoly_summary,
+                               missing_tpoly_summary)
+      }
     }
     
     # Add in the point counts while we're here

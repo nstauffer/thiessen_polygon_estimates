@@ -1021,7 +1021,7 @@ tolerance_test <- function(data,
 
 #' Summarize the results of tolerance testing
 #' @param data Data frame. Must contain the variables \code{variable} and \code{comparison_variable}.
-#' @param varaible Character string. The name of the variable in \code{data} containing the values to check against the tolerance.
+#' @param variable Character string. The name of the variable in \code{data} containing the values to check against the tolerance.
 #' @param comparison_variable Character string. The name of the variable in \code{data} containing the values to to use to calculate the tolerance.
 #' @param grouping_variables Vector of character strings. The names of variables to group the summary by. If \code{NULL} then all data will be summarized together. Defaults to \code{NULL}.
 #' @param percent_tolerance Numeric. The percent difference from the value in \code{comparison_variable} that its paired value in \code{variable} is allowed to be.

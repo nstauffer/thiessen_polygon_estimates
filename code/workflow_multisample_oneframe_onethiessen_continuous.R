@@ -73,6 +73,14 @@ raster_metadata <- data.frame(raster_id = paste0("raster_", raster_seed),
                               raster_ncol = raster_ncol,
                               raster_nrow = raster_nrow)
 
+# We're also making an sf object that represents the frame for the raster
+# We'll need this for generating Thiessen polygons that fully cover the AOI
+raster_boundary_coords <- data.frame(x = c(0, raster_ncol, raster_ncol, 0, 0),
+                                     y = c(0, 0, raster_nrow, raster_nrow, 0))
+raster_boundary_sfc <- sf::st_sfc(sf::st_polygon(x = list(outer = as.matrix(raster_boundary_coords))))
+raster_boundary_sf <- sf::st_sf(raster_boundary_sfc,
+                                crs = projection)
+
 #### Generate AOI ####
 aoi <- aoi_gen(xmax = raster_ncol,
                xmin = 0,
@@ -209,18 +217,16 @@ sample_points_list <- mapply(X = sample_points_list_1,
 sample_points_attributed_thiessen_list_list <- lapply(X = sample_points_list,
                                                       frame = aoi,
                                                       n_polygons = thiessen_n_polygons,
-                                                      points = sample_points,
                                                       points_min = thiessen_minimum_sample,
-                                                      seed_number = thiessen_seed,
+                                                      envelope = raster_boundary_sfc,
                                                       seed_increment = 100000,
                                                       use_albers = TRUE,
                                                       verbose = TRUE,
                                                       FUN = function(X,
                                                                      frame,
                                                                      n_polygons,
-                                                                     points,
                                                                      points_min,
-                                                                     seed_number,
+                                                                     envelope,
                                                                      seed_increment,
                                                                      use_albers,
                                                                      verbose){
@@ -231,8 +237,8 @@ sample_points_attributed_thiessen_list_list <- lapply(X = sample_points_list,
                                                                                                           n_polygons = n_polygons,
                                                                                                           points = sample_points,
                                                                                                           points_min = points_min,
-                                                                                                          # seed_number = seed_number,
-                                                                                                          seed_number = unique(sample_points$sample_seed),
+                                                                                                          envelope = envelope,
+                                                                                                          seed_number = current_sample_seed,
                                                                                                           seed_increment = seed_increment,
                                                                                                           use_albers = use_albers,
                                                                                                           verbose = verbose)

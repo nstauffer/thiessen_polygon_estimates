@@ -1083,7 +1083,7 @@ tolerance_summary <- function(data,
     
     tolerance_list <- lapply(X = data_list,
                              percent_tolerance = percent_tolerance,
-                             grouping_variables,
+                             grouping_variables = grouping_variables,
                              FUN = function(X, percent_tolerance, grouping_variables){
                                # How many sims are we looking at?
                                n_observations <- nrow(X)
@@ -1100,7 +1100,7 @@ tolerance_summary <- function(data,
                                                     proportion_within_tolerance = proportion_within_tolerance)
                                
                                for (variable in grouping_variables) {
-                                 output[[variable]] <- data[[variable]][1]
+                                 output[[variable]] <- X[[variable]][1]
                                }
                                
                                output[, c(grouping_variables, "n_observations", "percent_tolerance", "n_within_tolerance", "proportion_within_tolerance")]

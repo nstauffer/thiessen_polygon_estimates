@@ -450,12 +450,12 @@ wgtcat_proportion_wilcoxon <- wilcox.test(x = results_test_wgtcat$proportion_wei
 
 #### Plot the results ####
 unweighted_results <- sample_point_summary_thiessen[, c("sample_seed", "value", "n", "proportion", "lower_bound", "upper_bound")]
-unweighted_results$weighted <- "Unweighted"
+unweighted_results$weighting <- "Unweighted"
 weighted_thiessen_results <- sample_point_summary_thiessen[, c("sample_seed", "value", "n", "proportion_weighted", "lower_bound_weighted", "upper_bound_weighted")]
-weighted_thiessen_results$weighted <- "Weighted (Thiessen)"
+weighted_thiessen_results$weighting <- "Weighted (Thiessen)"
 names(weighted_thiessen_results) <- names(unweighted_results)
 weighted_wgtcat_results <- sample_point_summary_wgtcat[, c("sample_seed", "value", "n", "proportion_weighted", "lower_bound_weighted", "upper_bound_weighted")]
-weighted_wgtcat_results$weighted <- "Weighted (WgtCat)"
+weighted_wgtcat_results$weighting <- "Weighted (WgtCat)"
 names(weighted_wgtcat_results) <- names(unweighted_results)
 
 results <- rbind(unweighted_results,
@@ -479,7 +479,7 @@ ggplot() +
              aes(x = category,
                  y = proportion),
              color = "red") +
-  facet_wrap(~weighted)
+  facet_wrap(~weighting)
 
 # # Bounds
 # ggplot() +
@@ -494,7 +494,7 @@ ggplot() +
 #              aes(x = category,
 #                  y = proportion),
 #              color = "red") +
-#   facet_wrap(~weighted)
+#   facet_wrap(~weighting)
 
 #### Write out results ####
 # Raster
@@ -600,7 +600,7 @@ sf::st_write(sample_points_attributed_combined,
              append = FALSE)
 
 # Results
-results_output_variables <- c("raster_id", "aoi_id", "sample_seed", "category", "weighted", "proportion", "lower_bound", "upper_bound", "proportion_true")
+results_output_variables <- c("raster_id", "aoi_id", "sample_seed", "category", "weighting", "proportion", "lower_bound", "upper_bound", "proportion_true")
 results_output_path <- paste0(output_path,
                               "/",
                               "results",

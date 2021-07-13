@@ -339,7 +339,7 @@ sample_points_attributed_wgtcat_list <- lapply(X = sample_points_list,
                                                  
                                                  # Add that weight to the points
                                                  sample_points <- sf::st_join(x = sample_points,
-                                                                              y = wgtcat_polygons[, c("weight")])
+                                                                              y = wgtcat_polygons[, c("wgtcat_id", "weight")])
                                                  
                                                  sample_points
                                                })

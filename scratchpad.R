@@ -1,5 +1,18 @@
 source("C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/workflow_multisample_oneframe_onethiessen_continuous.R")
 
+#### RASTER BOUNDARY SFC ####
+projection <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
+raster_boundary_coords <- data.frame(x = c(0, raster_ncol, raster_ncol, 0, 0),
+                                     y = c(0, 0, raster_nrow, raster_nrow, 0))
+raster_boundary_sfc <- sf::st_sfc(sf::st_polygon(x = list(outer = as.matrix(raster_boundary_coords))))
+raster_boundary_sf <- sf::st_sf(raster_boundary_sfc,
+                    crs = projection)
+frame <- raster_boundary_sf
+
+ggplot() +
+  geom_sf(data = raster_boundary_sfc,
+          alpha = 0.25)
+
 #### THRESHOLD ANALYSIS ####
 #' Check whether results are within a certain tolerance of the true value
 #' @param data Data frame. Must contain the variables \code{variable} and \code{comparison_variable}.
@@ -11,10 +24,10 @@ tolerance_test <- function(data,
                            variable,
                            comparison_variable,
                            percent_tolerance = 5){
-  if (class(data != "data.frame")) {
+  if (class(data) != "data.frame") {
     stop("data must be a data frame")
   }
-  if (nrow(data < 1)) {
+  if (nrow(data) < 1) {
     stop("data must contain at least one row of values")
   }
   if (!(variable %in% names(data))) {
@@ -58,11 +71,24 @@ ggplot() +
                   y = y,
                   fill = layer)) +
   scale_fill_viridis_c() +
-  geom_sf(data = aoi,
-          alpha = 0.25) +
+  # geom_sf(data = raster_boundary_sf,
+  #         alpha = 0.25) +
+  # geom_sf(data = aoi,
+  #         alpha = 0.25) +
   geom_sf(data = frame,
           alpha = 0.25) +
-  geom_sf(data = sample_points_list[[1]])
+  geom_sf(data = thiessen_list[[3]],
+          alpha = 0.25) +
+  # geom_sf(data = thiessen_polygons,
+  #         alpha = 0.25) +
+  # geom_sf(data = thiessen_polygons_clipped,
+  #         alpha = 0.25) +
+  # geom_sf(data = test,
+  #         alpha = 0.25) +
+  geom_sf(data = centroids,
+          color = "red") +
+  geom_sf(data = sample_points_list[[3]],
+          aes(color = frame_id))
 
 
 #### WEIGHTED ANALYSIS OF CONTINUOUS VARIABLE ####

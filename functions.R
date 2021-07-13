@@ -1110,3 +1110,80 @@ tolerance_summary <- function(data,
   }
   return(output)
 }
+
+#' Read in results from simulations
+#' @description This assumes that the simulations are all kept in the same folder and contain the folder "output/results" with only the tabular results as CSV files. It also assumes that the results files have a unique identifying number at the end of their filenames.
+#' @param simulations Vector of character strings. The names of the simulations (that is, the folder names) to read in.
+#' @param simulations_path Character string. The filepath to where the folders matching the name(s) in \code{simulations} are stored.
+#' @returns The combined results of all the simulations with additional fields identifying which simulation run and which simulation the results belong to.
+read_results <- function(simulations,
+                         simulations_path){
+  if (!is.character(simulations)) {
+    stop("simulations must be a character vector of at least length one")
+  }
+  if (!is.character(simulations_path)) {
+    stop("simulations_path must be a character string")
+  }
+  if (length(simulations_path) > 1) {
+    stop("simulations_path must be a character string")
+  }
+  
+  # Read in the results from all the simulations!
+  results_list <- lapply(X = simulations,
+                         simulations_path = simulations_path,
+                         FUN = function(X, simulations_path){
+                           # Just so this is more readable
+                           sim_name <- X
+                           
+                           # Where are the results for this sim living?
+                           results_path <- paste0(simulations_path, "/",
+                                                  sim_name,
+                                                  "/output/results")
+                           
+                           if (!file.exists(results_path)) {
+                             stop("The following filepath does not exist: ", results_path)
+                           }
+                           
+                           # Get a list of all the results files in that location
+                           # Find the results files
+                           results_files <- list.files(path = results_path,
+                                                       pattern = "\\.(csv|CSV)$",
+                                                       full.names = TRUE)
+                           
+                           # Read in the results
+                           results_list <- lapply(X = results_files,
+                                                  FUN = function(X){
+                                                    # Get a unique ID from the filename's suffix (output_id_suffix in the sim script)
+                                                    uid <- stringr::str_extract(X,
+                                                                                pattern = "_\\d+\\.(csv|CSV)$")
+                                                    uid <- stringr::str_extract(uid,
+                                                                                pattern = "\\d+")
+                                                    
+                                                    # Read in the results
+                                                    current_results <- read.csv(X,
+                                                                                stringsAsFactors = FALSE)
+                                                    
+                                                    # Add the unique ID to the results
+                                                    current_results$sim_id <- uid
+                                                    
+                                                    # Just to correct in case the otuput is old-style
+                                                    names(current_results)[names(current_results) == "weighted"] <- "weighting"
+                                                    
+                                                    current_results
+                                                  })
+                           
+                           # Combine all the results!
+                           full_results <- do.call(rbind,
+                                                   results_list)
+                           
+                           # Add in the simulation info
+                           full_results$sim_name <- sim_name
+                           
+                           full_results
+                         })
+  
+  results <- do.call(rbind,
+                     results_list)
+  
+  return(results)
+}

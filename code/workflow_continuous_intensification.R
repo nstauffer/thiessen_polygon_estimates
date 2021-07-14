@@ -445,10 +445,6 @@ sample_point_summary_wgtcat <- do.call(rbind,
 raster_values_in_aoi <- unlist(raster::extract(x = current_raster,
                                                y = aoi))
 
-raster_values_in_wgtcat <- unlist(raster::extract(x = current_raster,
-                                                  # Because there will be no points in just the AOI, we eliminate those areas
-                                                  y = wgtcat_polygons[wgtcat_polygons$wgtcat_id != "1", ]))
-
 raster_summary <- switch(raster_type,
                          "categorical" = {
                            # Count the number of cells in each category

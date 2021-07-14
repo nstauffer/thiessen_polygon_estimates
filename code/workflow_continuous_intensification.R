@@ -117,12 +117,15 @@ sample_points_list_1 <- lapply(X = sample_seeds,
                                               projection,
                                               raster){
                                  
+                                 # Generate the points
                                  sample_points <- points_gen(frame = frame,
                                                              sample_type = sample_type,
                                                              n_points = n_points,
                                                              seed_number = X,
                                                              projection = projection)
                                  
+                                 # Restrict to just the points in the AOI
+                                 # Note that this is a relic and shouldn't be necessary, but no reason to drop it
                                  sample_point_indices_in_aoi <- as.vector(sf::st_intersects(x = aoi,
                                                                                             y = sample_points,
                                                                                             sparse = FALSE))
@@ -130,16 +133,21 @@ sample_points_list_1 <- lapply(X = sample_seeds,
                                  sample_points <- sample_points[sample_point_indices_in_aoi, ]
                                  
                                  # Attribute them with raster values
+                                 # First we need them as an SPDF for raster::extract()
                                  sample_points_spdf <- methods::as(sample_points,
                                                                    "Spatial")
                                  
+                                 # Then we get a vector of the values
                                  raster_values <- raster::extract(x = raster,
                                                                   y = sample_points_spdf)
                                  
+                                 # And write them into the sf object!
                                  sample_points$value <- raster_values
                                  
+                                 # Add the metadata about which frame these go to
                                  sample_points$frame_id <- unique(frame$frame_id)
                                  
+                                 # Return the points
                                  sample_points
                                })
 
@@ -162,6 +170,7 @@ frame$frame_id <- paste0(raster_metadata$raster_id,
                          frame$frame_seed)
 
 # Generate sampling points for that frame, restricted to those that fall in the AOI
+# This is the same process as above
 sample_points_list_2 <- lapply(X = sample_seeds,
                                frame = frame,
                                aoi = aoi,
@@ -189,7 +198,6 @@ sample_points_list_2 <- lapply(X = sample_seeds,
                                  
                                  sample_points <- sample_points[sample_point_indices_in_aoi, ]
                                  
-                                 # Attribute them with raster values
                                  sample_points_spdf <- methods::as(sample_points,
                                                                    "Spatial")
                                  
@@ -214,10 +222,15 @@ sample_points_list <- mapply(X = sample_points_list_1,
                              })
 
 #### Generate Thiessen polygons ####
+# This gets kinda messy because we need to keep generating Thiessen polygons until they meet the criteria
+# So we're going to go through the sample points list and for each draw in that list we'll generate
+# Thiessen polygons until we get a set that works, then we attribute the points,
+# and return BOTH the sample points with the weights AND the Thiessen polygons
 sample_points_attributed_thiessen_list_list <- lapply(X = sample_points_list,
                                                       frame = aoi,
                                                       n_polygons = thiessen_n_polygons,
                                                       points_min = thiessen_minimum_sample,
+                                                      # The envelope has to be an sfc, not sf, object for sf::st_voron
                                                       envelope = raster_boundary_sfc,
                                                       seed_increment = 100000,
                                                       use_albers = TRUE,
@@ -230,15 +243,33 @@ sample_points_attributed_thiessen_list_list <- lapply(X = sample_points_list,
                                                                      seed_increment,
                                                                      use_albers,
                                                                      verbose){
+                                                        # For ease of reading
                                                         sample_points <- X
+                                                        
+                                                        # The Thiessen polygon draws will start with the same seed as the sample point draw
+                                                        # This may not be the final seed number used, depending on if the Thiessen polygons all
+                                                        # Contain enough of the sample points
                                                         current_sample_seed <- unique(sample_points$sample_seed)
                                                         
+                                                        # OKAY! So, we're generating the Thiessen polygons here
+                                                        # This function uses centroids distributed in a simple, random way
+                                                        # The clipping frame is the AOI (see the lapply() arguments)
                                                         thiessen_polygons <- thiessen_polygons_gen_random(frame = frame,
+                                                                                                          # How many Thiessen polygons to draw
                                                                                                           n_polygons = n_polygons,
+                                                                                                          # What points the polygons are being compared against
                                                                                                           points = sample_points,
+                                                                                                          # The minimum number of points that need to be in each polygon
                                                                                                           points_min = points_min,
+                                                                                                          # The maximum extent of the Thiessen polygons
+                                                                                                          # We're using the boundary of the raster to make sure that
+                                                                                                          # the Thiessen polygons stretch to cover the whole frame/AOI
                                                                                                           envelope = envelope,
                                                                                                           seed_number = current_sample_seed,
+                                                                                                          # If a Thiessen draw doesn't have enough points in each polygon
+                                                                                                          # then the seed number will be incremented by this much for the
+                                                                                                          # next attempt. I keep this large so that no set of tpolys will
+                                                                                                          # be the same for multiple sample point draws
                                                                                                           seed_increment = seed_increment,
                                                                                                           use_albers = use_albers,
                                                                                                           verbose = verbose)
@@ -352,22 +383,34 @@ sample_points_attributed_wgtcat <- do.call(rbind,
                                            sample_points_attributed_wgtcat_list)
 
 #### Run weighted analysis ####
+# Analyze using the Thiessen weights
+# The list is still broken up by sampling design, so we'll use a lapply() to analyze each independently
+# just as the statistics gods intended
 sample_point_summary_thiessen_list <- lapply(X = sample_points_attributed_thiessen_list,
                                              alpha = analysis_alpha,
                                              FUN = function(X,
                                                             alpha){
+                                               # Just to keep things simple to read
                                                sample_points <- X
+                                               
+                                               # Run the actual analysis
                                                sample_point_summary <- continuous_analysis(data = sample_points,
                                                                                            alpha = alpha)
+                                               
+                                               # Add in some metadata
                                                sample_point_summary$sample_seed <- sample_points[["sample_seed"]][1]
                                                sample_point_summary$method <- "Thiessen"
+                                               
+                                               # Return the data frame
                                                sample_point_summary
                                              })
 
+# Combine the results into a single object
 sample_point_summary_thiessen <- do.call(rbind,
                                          sample_point_summary_thiessen_list)
 
 
+# Now do the same for the weight category-weighted values
 sample_point_summary_wgtcat_list <- lapply(X = sample_points_attributed_wgtcat_list,
                                            alpha = analysis_alpha,
                                            FUN = function(X,

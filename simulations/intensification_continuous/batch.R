@@ -3,7 +3,7 @@ source("C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/functions.
 
 #### CONFIGURATION ####
 n_sims <- 50
-sim_seed_offset <- 94
+sim_seed_offset <- 99
 
 sim_file <- "C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/code/workflow_continuous_intensification.R"
 

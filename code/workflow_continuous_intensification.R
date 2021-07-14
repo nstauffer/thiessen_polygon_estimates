@@ -306,6 +306,7 @@ sample_points_attributed_thiessen_list <- lapply(X = sample_points_attributed_th
                                                  })
 
 # Make an sf polygon object of the Thiessen polygons
+# We'll write this out later
 thiessen_list <- lapply(X = sample_points_attributed_thiessen_list_list,
                         FUN = function(X){
                           X[["thiessen_polygons"]]
@@ -325,7 +326,11 @@ polygons <- rbind(aoi[, "uid"],
 
 # Intersect them to create weight category polygons
 wgtcat_polygons <- wgtcat_gen(polygons,
+                              # The AOI index means that any polygons created in the intersection that
+                              # don't overlap with the polygon at that index will be dropped
+                              # We do this because we're restricting to the AOI
                               aoi_index = 1)
+# Add in some metadata
 wgtcat_polygons$raster_id <- raster_metadata$raster_id
 wgtcat_polygons$aoi_id <- aoi$aoi_id
 
@@ -379,9 +384,13 @@ sample_points_attributed_wgtcat_list <- lapply(X = sample_points_list,
                                                                               y = wgtcat_polygons[, c("wgtcat_id", "weight")])
                                                  
                                                  # Get the variables right
+                                                 # I'm not really sure why wgtcat_id gets an x and y version, but the values
+                                                 # are identical, so we'll just strip out the ".x" from "wgtcat_id.x"
                                                  names(sample_points) <- gsub(names(sample_points),
                                                                               pattern = "\\.x$",
                                                                               replacement = "")
+                                                 
+                                                 # Return only the desired variables
                                                  sample_points[, c("sample_id", "sample_seed", "value", "frame_id", "wgtcat_id", "weight", "geometry")]
                                                })
 
@@ -463,7 +472,7 @@ raster_summary <- switch(raster_type,
                          })
 
 #### Build the results output ####
-# So, both the sumaple_point_summary_* objects contain the unweighted results
+# So, both the sample_point_summary_* objects contain the unweighted results
 # But we'll grab them from the Thiessen summary just because
 unweighted_results <- sample_point_summary_thiessen[, c("sample_seed", "n", "mean", "sd", "variance")]
 # Write in the weighting approach (in this case "Unweighted")

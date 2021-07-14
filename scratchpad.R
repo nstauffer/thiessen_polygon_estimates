@@ -73,20 +73,22 @@ ggplot() +
   scale_fill_viridis_c() +
   # geom_sf(data = raster_boundary_sf,
   #         alpha = 0.25) +
-  # geom_sf(data = aoi,
+  geom_sf(data = aoi,
+          alpha = 0.25) +
+  geom_sf(data = wgtcat_polygons,
+          alpha = 0.25) +
+  # geom_sf(data = frame,
   #         alpha = 0.25) +
-  geom_sf(data = frame,
-          alpha = 0.25) +
-  geom_sf(data = thiessen_list[[3]],
-          alpha = 0.25) +
+  # geom_sf(data = thiessen_list[[3]],
+  #         alpha = 0.25) +
   # geom_sf(data = thiessen_polygons,
   #         alpha = 0.25) +
   # geom_sf(data = thiessen_polygons_clipped,
   #         alpha = 0.25) +
   # geom_sf(data = test,
   #         alpha = 0.25) +
-  geom_sf(data = centroids,
-          color = "red") +
+  # geom_sf(data = centroids,
+  #         color = "red") +
   geom_sf(data = sample_points_list[[3]],
           aes(color = frame_id))
 

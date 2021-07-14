@@ -129,6 +129,13 @@ thiessen_polygons_gen_random <- function(frame,
     } else if (!all(sf::st_geometry_type(points) %in% c("POINT"))){
       stop("points must be an sf points object")
     }
+    if (nrow(points) < (n_polygons * points_min)) {
+      stop(paste0("There are too few points available to put ",
+                  points_min,
+                   " points in each of ",
+                  n_polygons,
+                  " Thiessen polygons"))
+    }
   }
   if (!is.null(seed_number)) {
     if (!(class(seed_number) %in% c("numeric", "integer")) | length(seed_number) > 1) {

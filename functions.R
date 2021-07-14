@@ -948,16 +948,25 @@ categorical_analysis <- function(data,
 #' @returns A wide-format data frame with the following values: number of observations, mean, standard deviation, weighted mean, and weighted standard deviation.
 continuous_analysis <- function(data,
                                 alpha) {
-  data$weighted_value <- data$value * data$weight / sum(data$weight)
+  # Unweighted values to start
   n <- nrow(data)
   mean <- mean(data$value)
   sd <- sd(data$value)
   variance <- var(data$value)
+  
+  # Now the weighted stuff
+  # Get the weight-adjusted values
+  data$weighted_value <- data$value * data$weight / sum(data$weight)
+  # Weighted mean is the sum of the weight-adjusted values divided by the sum of all weights
   mean_weighted <- sum(data$weighted_value)
+  # Standard deviation is calculated differently for weighted values than unweighted
   sd_weighted <- sqrt(sum(data$weight * (data$value - mean)^2) / ((n - 1) / n * sum(data$weight)))
+  # So is variance
   variance_weighted <- weighted_variance(values = data$value,
                                          weights = data$weight,
                                          na_remove = FALSE)
+  
+  
   
   output <- data.frame(n = n,
                        mean = mean,
@@ -971,7 +980,7 @@ continuous_analysis <- function(data,
 }
 
 #' Calculate a weighted variance
-#' @param values Numeric vector. The values to calculate teh weighted variance for.
+#' @param values Numeric vector. The values to calculate the weighted variance for.
 #' @param weights Numeric vector. The weights for the vector \code{values}. They must be in the same order as \code{values}.
 #' @param na_remove Logical. If \code{TRUE} then any data with either a value or weight of \code{NA} will be removed before calculating. Defaults to \code{FALSE}.
 weighted_variance <- function(values,

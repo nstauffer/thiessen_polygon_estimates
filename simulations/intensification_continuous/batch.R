@@ -44,7 +44,7 @@ thiessen_minimum_sample <- 2
 
 # Analysis
 analysis_alpha <- 0.05
-percent_threshold <- 5
+percent_tolerance <- 5
 
 ##### SIMULATE ####
 # Run the sims
@@ -151,18 +151,18 @@ wilcoxon_results_summary$proportion_indistinguishable <- apply(X = wilcoxon_resu
 within_tolerance <- tolerance_test(data = full_results,
                        variable = "mean",
                        comparison_variable = "mean_true",
-                       percent_tolerance = percent_threshold)
+                       percent_tolerance = percent_tolerance)
 
-threshold_var_name <- paste0("within_", percent_threshold, "_percent")
+threshold_var_name <- paste0("within_", percent_tolerance, "_percent")
 full_results[[threshold_var_name]] <- within_tolerance
 
 threshold_list <- lapply(X = split(full_results, full_results$weighted),
-                         percent_threshold = percent_threshold,
-                         FUN = function(X, percent_threshold){
+                         percent_tolerance = percent_tolerance,
+                         FUN = function(X, percent_tolerance){
                            # How many sims are we looking at?
                            n_observations <- nrow(X)
                            # Which variable has the info about whether the threshold was met or not?
-                           var_name <- paste0("within_", percent_threshold, "_percent")
+                           var_name <- paste0("within_", percent_tolerance, "_percent")
                            # How many sims were within the threshold?
                            within_tolerance_count <- sum(X[[var_name]])
                            # What's the proportion within the threshold?
@@ -170,7 +170,7 @@ threshold_list <- lapply(X = split(full_results, full_results$weighted),
                            # Gimme those results!
                            data.frame(weighting = X[["weighted"]][1],
                                       n_sims = n_observations,
-                                      percent_threshold = percent_threshold,
+                                      percent_tolerance = percent_tolerance,
                                       n_within_tolerance = within_tolerance_count,
                                       proportion_within_tolerance = proportion_within_tolerance)
                          })

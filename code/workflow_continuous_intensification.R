@@ -1,11 +1,13 @@
-#### Get the packages attached ####
+#### Get the packages attached ------------------------------------------------
 library(ggplot2)
 
-#### Get the functions loaded ####
+#### Get the functions loaded ------------------------------------------------
 source("C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/functions.R")
 
-#### Set the config ####
-# # Simluation
+#### Set the config ------------------------------------------------
+# THIS IS ALL INHERITED FROM THE BATCH.R RUN BUT IS LEFT HERE AS REFERENCE
+
+# # Simulation
 # projection <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
 # output_path <- "C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/simulations/intensification_continuous/output/"
 # # simulation_seed <- 1
@@ -44,7 +46,8 @@ source("C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/functions.
 # # Analysis
 # analysis_alpha <- 0.05
 
-#### Generate a raster ####
+#### Generate a raster ------------------------------------------------
+##### Create the raster ####
 current_raster <- switch(raster_type,
                          "categorical" = {
                            landscape_gen_categorical(categories =  raster_values,
@@ -67,12 +70,14 @@ current_raster <- switch(raster_type,
                            raster
                          })
 
+##### Build the metadata dataframe ####
 raster_metadata <- data.frame(raster_id = paste0("raster_", raster_seed),
                               raster_seed = raster_seed,
                               raster_type = raster_type,
                               raster_ncol = raster_ncol,
                               raster_nrow = raster_nrow)
 
+##### Build a bounding box sfc object ####
 # We're also making an sf object that represents the frame for the raster
 # We'll need this for generating Thiessen polygons that fully cover the AOI
 raster_boundary_coords <- data.frame(x = c(0, raster_ncol, raster_ncol, 0, 0),
@@ -81,7 +86,8 @@ raster_boundary_sfc <- sf::st_sfc(sf::st_polygon(x = list(outer = as.matrix(rast
 raster_boundary_sf <- sf::st_sf(raster_boundary_sfc,
                                 crs = projection)
 
-#### Generate AOI ####
+#### Generate AOI ------------------------------------------------
+##### Create the AOI polygon ####
 aoi <- aoi_gen(xmax = raster_ncol,
                xmin = 0,
                ymax = raster_nrow,
@@ -100,8 +106,8 @@ aoi$frame_id <- paste0("frame_",
                        aoi_seed)
 aoi$frame_seed <- aoi_seed
 
-#### Generate sampling points ####
-# Points for within the AOI
+#### Generate sampling points ------------------------------------------------
+##### Create points within the AOI ####
 sample_points_list_1 <- lapply(X = sample_seeds,
                                frame = aoi,
                                aoi = aoi,
@@ -151,6 +157,7 @@ sample_points_list_1 <- lapply(X = sample_seeds,
                                  sample_points
                                })
 
+##### Create intensification frame ####
 # Create the sampling frame that isn't the AOI to act as an intensification
 frame <- aoi_gen(xmax = raster_ncol,
                  xmin = 0,
@@ -169,6 +176,7 @@ frame$frame_id <- paste0(raster_metadata$raster_id,
                          "frame_",
                          frame$frame_seed)
 
+##### Create points within the intensification frame ####
 # Generate sampling points for that frame, restricted to those that fall in the AOI
 # This is the same process as above
 sample_points_list_2 <- lapply(X = sample_seeds,
@@ -211,6 +219,7 @@ sample_points_list_2 <- lapply(X = sample_seeds,
                                  sample_points
                                })
 
+##### Combine points from AOI and intensification ####
 # Combine the two lists into a list where all draws that used the same seed are in the same sf object
 # So, for the first seed there was a draw for the AOI and each frame and those are put into the same
 # sf points object as the first object in this list
@@ -221,7 +230,8 @@ sample_points_list <- mapply(X = sample_points_list_1,
                                rbind(X, Y)
                              })
 
-#### Generate Thiessen polygons ####
+#### Generate Thiessen polygons ------------------------------------------------
+##### Create Thiessen polygons and attribute points ####
 # This gets kinda messy because we need to keep generating Thiessen polygons until they meet the criteria
 # So we're going to go through the sample points list and for each draw in that list we'll generate
 # Thiessen polygons until we get a set that works, then we attribute the points,
@@ -299,6 +309,7 @@ sample_points_attributed_thiessen_list_list <- lapply(X = sample_points_list,
                                                         return(output)
                                                       })
 
+##### Create lists of attributed points and thiessen polygons ####
 # Make a list of just the sample points with the Thiessen info attached
 sample_points_attributed_thiessen_list <- lapply(X = sample_points_attributed_thiessen_list_list,
                                                  FUN = function(X){
@@ -314,7 +325,7 @@ thiessen_list <- lapply(X = sample_points_attributed_thiessen_list_list,
 thiessen_polygons <- do.call(rbind,
                              thiessen_list)
 
-#### Generate wgtcat polygons ####
+#### Generate wgtcat polygons ------------------------------------------------
 # Give both sets of polygons unique IDs in the same variable
 aoi$uid <- "aoi"
 frame$uid <- "frame"
@@ -334,7 +345,7 @@ wgtcat_polygons <- wgtcat_gen(polygons,
 wgtcat_polygons$raster_id <- raster_metadata$raster_id
 wgtcat_polygons$aoi_id <- aoi$aoi_id
 
-# Attribute the sample point with wgtcat info
+##### Attribute the sample point with wgtcat info ####
 sample_points_attributed_wgtcat_list <- lapply(X = sample_points_list,
                                                wgtcat_polygons = wgtcat_polygons,
                                                FUN = function(X, wgtcat_polygons){
@@ -398,7 +409,7 @@ sample_points_attributed_wgtcat <- do.call(rbind,
                                            sample_points_attributed_wgtcat_list)
 
 #### Run weighted analysis ####
-# Analyze using the Thiessen weights
+##### Analyze using the Thiessen weights ####
 # The list is still broken up by sampling design, so we'll use a lapply() to analyze each independently
 # just as the statistics gods intended
 sample_point_summary_thiessen_list <- lapply(X = sample_points_attributed_thiessen_list,
@@ -425,7 +436,7 @@ sample_point_summary_thiessen <- do.call(rbind,
                                          sample_point_summary_thiessen_list)
 
 
-# Now do the same for the weight category-weighted values
+##### Analyze using the weight category weights ####
 sample_point_summary_wgtcat_list <- lapply(X = sample_points_attributed_wgtcat_list,
                                            alpha = analysis_alpha,
                                            FUN = function(X,
@@ -441,7 +452,7 @@ sample_point_summary_wgtcat_list <- lapply(X = sample_points_attributed_wgtcat_l
 sample_point_summary_wgtcat <- do.call(rbind,
                                        sample_point_summary_wgtcat_list)
 
-#### Summarize AOI ####
+#### Summarize AOI ------------------------------------------------
 raster_values_in_aoi <- unlist(raster::extract(x = current_raster,
                                                y = aoi))
 
@@ -467,7 +478,7 @@ raster_summary <- switch(raster_type,
                            raster_summary
                          })
 
-#### Build the results output ####
+#### Build the results outputs ------------------------------------------------
 # So, both the sample_point_summary_* objects contain the unweighted results
 # But we'll grab them from the Thiessen summary just because
 unweighted_results <- sample_point_summary_thiessen[, c("sample_seed", "n", "mean", "sd", "variance")]
@@ -499,8 +510,8 @@ results$raster_id <- raster_metadata$raster_id
 results$aoi_id <- aoi$aoi_id
 
 
-#### Write out results ####
-# Raster
+#### Write out results and spatial objects ------------------------------------------------
+##### Raster ####
 raster_output_path <- paste0(output_path,
                              "/",
                              "spatial",
@@ -513,7 +524,7 @@ raster::writeRaster(current_raster,
                     filename = raster_output_path,
                     overwrite = TRUE)
 
-# AOI
+##### AOI ####
 aoi_output_variables <- c("raster_id", "aoi_id", "aoi_seed")
 aoi_output_path <- paste0(output_path,
                           "/",
@@ -528,7 +539,7 @@ sf::st_write(aoi[, aoi_output_variables],
              driver = "ESRI Shapefile",
              append = FALSE)
 
-# Sample frames
+##### Sample frames ####
 frame_output_variables <- c("raster_id", "frame_id", "frame_seed")
 frames <- frame[, frame_output_variables]
 frame_output_path <- paste0(output_path,
@@ -544,7 +555,7 @@ sf::st_write(frames[, frame_output_variables],
              driver = "ESRI Shapefile",
              append = FALSE)
 
-# Thiessen polygons
+##### Thiessen polygons ####
 thiessen_polygons_output_variables <- c("raster_id", "aoi_id", "tpoly_id", "sample_seed", "tpoly_seed", "area_m2", "n_points", "weight")
 thiessen_polygons_output_path <- paste0(output_path,
                                         "/",
@@ -559,7 +570,7 @@ sf::st_write(thiessen_polygons[, thiessen_polygons_output_variables],
              driver = "ESRI Shapefile",
              append = FALSE)
 
-# WgtCat polygons
+##### Weight category polygons ####
 wgtcat_output_variables <- c("raster_id", "aoi_id", "wgtcat_id", "area_m2")
 wgtcat_output_path <- paste0(output_path,
                              "/",
@@ -574,7 +585,7 @@ sf::st_write(wgtcat_polygons[, wgtcat_output_variables],
              driver = "ESRI Shapefile",
              append = FALSE)
 
-# Points
+##### Points ####
 sample_points_attributed_thiessen <- do.call(rbind,
                                              sample_points_attributed_thiessen_list)
 sample_points_attributed_thiessen$wgtcat_id <- NA
@@ -602,7 +613,7 @@ sf::st_write(sample_points_attributed_combined,
              driver = "ESRI Shapefile",
              append = FALSE)
 
-# Results
+##### Results ####
 results_output_variables <- c("raster_id", "aoi_id", "sample_seed", "weighting", "n", "mean", "sd", "variance", "mean_true", "sd_true", "variance_true")
 results_output_path <- paste0(output_path,
                               "/",

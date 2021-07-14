@@ -186,6 +186,7 @@ thiessen_polygons_gen_random <- function(frame,
                                        "-",
                                        thiessen_polygons$polygon_unique_id)
   
+  # We only care about hitting our minimum number of points per polygon if we have points in the first place
   if (!is.null(points)) {
     ## Check that polygons contain enough points
     points_attributed <- sf::st_join(x = points,
@@ -207,7 +208,8 @@ thiessen_polygons_gen_random <- function(frame,
                              missing_tpoly_summary)
     }
 
-    
+    # So, if the polygons didn't have enough points each, increment the seed number and try again
+    # over and over until it actually pans out
     while (!all(tpoly_summary[["n_points"]] >= points_min)) {
       seed_number <- seed_number + seed_increment
       if (verbose) {

@@ -179,8 +179,8 @@ threshold_results <- do.call(rbind,
                              threshold_list)
 # Plot the results to look for weird distributions
 ggplot(full_results) +
-  geom_point(aes(x = proportion,
-                 y = proportion_true,
+  geom_point(aes(x = mean,
+                 y = mean_true,
                  color = sim_id),
              alpha = 0.1) +
   geom_abline(slope = 1,

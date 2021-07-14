@@ -283,7 +283,13 @@ sample_points_attributed_thiessen_list_list <- lapply(X = sample_points_list,
                                                         sample_points <- sf::st_join(x = sample_points,
                                                                                      y = thiessen_polygons[, c("tpoly_id", "weight")])
                                                         
-                                                        sample_points <- sample_points[!is.na(sample_points$tpoly_id), ]
+                                                        # This shouldn't be necessary because all points should fall within the
+                                                        # boundaries of the Thiessen polygons
+                                                        if (any(is.na(sample_points$tpoly_id))) {
+                                                          warning("Some points did not overlap with the polygons and were dropped")
+                                                          sample_points <- sample_points[!is.na(sample_points$tpoly_id), ]
+                                                        }
+                                                        
                                                         
                                                         # We're returning both the points and the polygons so that we can preserve the polygons
                                                         # Without this, they'd vanish as soon as the lapply() is done

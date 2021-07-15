@@ -193,6 +193,9 @@ thiessen_polygons_gen_random <- function(frame,
                                        "-",
                                        thiessen_polygons$polygon_unique_id)
   
+  thiessen_polygons_clipped <- sf::st_intersection(x = thiessen_polygons,
+                                                   y = frame)
+  
   # We only care about hitting our minimum number of points per polygon if we have points in the first place
   if (!is.null(points)) {
     ## Check that polygons contain enough points

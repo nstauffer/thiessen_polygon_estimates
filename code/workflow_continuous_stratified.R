@@ -123,7 +123,10 @@ strata_polygons$aoi_id <- aoi$aoi_id
 ##### Allocate the effort to the strata proportionally by area ####
 strata_polygons$proportional_area <- strata_polygons$area_m2 / sum(strata_polygons$area_m2)
 
-strata_polygons$n_points <- round(strata_polygons$proportional_area * n_sample_points)
+strata_polygons$n_points <- ceiling(strata_polygons$proportional_area * n_sample_points)
+
+# NO ZERO COUNTS!!!!
+# strata_polygons$n_points[strata_polygons$n_points == 0] <- 1
 
 # Handle too many (or too few) points due to rounding by adjusting the count in the stratum with the most points
 n_excess_points <- sum(strata_polygons$n_points) - n_sample_points
@@ -131,6 +134,7 @@ n_excess_points <- sum(strata_polygons$n_points) - n_sample_points
 most_points_index <- which(strata_polygons$n_points == max(strata_polygons$n_points))
 
 strata_polygons$n_points[most_points_index] <- strata_polygons$n_points[most_points_index] - n_excess_points
+
 
 # Create a design object for grts()
 base_design <- lapply(X = strata_polygons$n_points,

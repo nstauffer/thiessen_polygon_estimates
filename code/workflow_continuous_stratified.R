@@ -496,92 +496,92 @@ results$aoi_id <- aoi$aoi_id
 
 
 #### Write out results and spatial objects ------------------------------------------------
-##### Raster ####
-raster_output_path <- paste0(output_path,
-                             "/",
-                             "spatial",
-                             "/",
-                             "raster",
-                             "_",
-                             simulation_seed,
-                             ".tif")
-raster::writeRaster(current_raster,
-                    filename = raster_output_path,
-                    overwrite = TRUE)
-
-##### AOI ####
-aoi_output_variables <- c("raster_id", "aoi_id", "aoi_seed")
-aoi_output_path <- paste0(output_path,
-                          "/",
-                          "spatial",
-                          "/",
-                          "aoi",
-                          "_",
-                          simulation_seed,
-                          ".shp")
-sf::st_write(aoi[, aoi_output_variables],
-             dsn = aoi_output_path,
-             driver = "ESRI Shapefile",
-             append = FALSE)
-
-
-##### Thiessen polygons ####
-thiessen_polygons_output_variables <- c("raster_id", "aoi_id", "tpoly_id", "sample_seed", "tpoly_seed", "area_m2", "n_points", "weight")
-thiessen_polygons_output_path <- paste0(output_path,
-                                        "/",
-                                        "spatial",
-                                        "/",
-                                        "thiessen_polygons",
-                                        "_",
-                                        simulation_seed,
-                                        ".shp")
-sf::st_write(thiessen_polygons[, thiessen_polygons_output_variables],
-             dsn = thiessen_polygons_output_path,
-             driver = "ESRI Shapefile",
-             append = FALSE)
-
-##### Weight category polygons ####
-wgtcat_output_variables <- c("raster_id", "aoi_id", "wgtcat_id", "area_m2")
-wgtcat_output_path <- paste0(output_path,
-                             "/",
-                             "spatial",
-                             "/",
-                             "wgtcat",
-                             "_",
-                             simulation_seed,
-                             ".shp")
-sf::st_write(wgtcat_polygons[, wgtcat_output_variables],
-             dsn = wgtcat_output_path,
-             driver = "ESRI Shapefile",
-             append = FALSE)
-
-##### Points ####
-sample_points_attributed_thiessen <- do.call(rbind,
-                                             sample_points_attributed_thiessen_list)
-sample_points_attributed_thiessen$wgtcat_id <- NA
-sample_points_attributed_thiessen$raster_id <- raster_metadata$raster_id
-sample_points_attributed_thiessen$aoi_id <- aoi$aoi_id
-sample_points_attributed_wgtcat <- do.call(rbind,
-                                           sample_points_attributed_wgtcat_list)
-sample_points_attributed_wgtcat$tpoly_id <- NA
-sample_points_attributed_wgtcat$raster_id <- raster_metadata$raster_id
-sample_points_attributed_wgtcat$aoi_id <- aoi$aoi_id
-
-sample_points_output_variables <- c("raster_id", "aoi_id", "frame_id", "tpoly_id", "wgtcat_id", "sample_id", "sample_seed", "value", "weight")
-sample_points_attributed_combined <- rbind(sample_points_attributed_thiessen[, sample_points_output_variables],
-                                           sample_points_attributed_wgtcat[, sample_points_output_variables])
-sample_points_output_path <- paste0(output_path,
-                                    "/",
-                                    "spatial",
-                                    "/",
-                                    "points",
-                                    "_",
-                                    simulation_seed,
-                                    ".shp")
-sf::st_write(sample_points_attributed_combined,
-             dsn = sample_points_output_path,
-             driver = "ESRI Shapefile",
-             append = FALSE)
+# ##### Raster ####
+# raster_output_path <- paste0(output_path,
+#                              "/",
+#                              "spatial",
+#                              "/",
+#                              "raster",
+#                              "_",
+#                              simulation_seed,
+#                              ".tif")
+# raster::writeRaster(current_raster,
+#                     filename = raster_output_path,
+#                     overwrite = TRUE)
+# 
+# ##### AOI ####
+# aoi_output_variables <- c("raster_id", "aoi_id", "aoi_seed")
+# aoi_output_path <- paste0(output_path,
+#                           "/",
+#                           "spatial",
+#                           "/",
+#                           "aoi",
+#                           "_",
+#                           simulation_seed,
+#                           ".shp")
+# sf::st_write(aoi[, aoi_output_variables],
+#              dsn = aoi_output_path,
+#              driver = "ESRI Shapefile",
+#              append = FALSE)
+# 
+# 
+# ##### Thiessen polygons ####
+# thiessen_polygons_output_variables <- c("raster_id", "aoi_id", "tpoly_id", "sample_seed", "tpoly_seed", "area_m2", "n_points", "weight")
+# thiessen_polygons_output_path <- paste0(output_path,
+#                                         "/",
+#                                         "spatial",
+#                                         "/",
+#                                         "thiessen_polygons",
+#                                         "_",
+#                                         simulation_seed,
+#                                         ".shp")
+# sf::st_write(thiessen_polygons[, thiessen_polygons_output_variables],
+#              dsn = thiessen_polygons_output_path,
+#              driver = "ESRI Shapefile",
+#              append = FALSE)
+# 
+# ##### Weight category polygons ####
+# wgtcat_output_variables <- c("raster_id", "aoi_id", "wgtcat_id", "area_m2")
+# wgtcat_output_path <- paste0(output_path,
+#                              "/",
+#                              "spatial",
+#                              "/",
+#                              "wgtcat",
+#                              "_",
+#                              simulation_seed,
+#                              ".shp")
+# sf::st_write(wgtcat_polygons[, wgtcat_output_variables],
+#              dsn = wgtcat_output_path,
+#              driver = "ESRI Shapefile",
+#              append = FALSE)
+# 
+# ##### Points ####
+# sample_points_attributed_thiessen <- do.call(rbind,
+#                                              sample_points_attributed_thiessen_list)
+# sample_points_attributed_thiessen$wgtcat_id <- NA
+# sample_points_attributed_thiessen$raster_id <- raster_metadata$raster_id
+# sample_points_attributed_thiessen$aoi_id <- aoi$aoi_id
+# sample_points_attributed_wgtcat <- do.call(rbind,
+#                                            sample_points_attributed_wgtcat_list)
+# sample_points_attributed_wgtcat$tpoly_id <- NA
+# sample_points_attributed_wgtcat$raster_id <- raster_metadata$raster_id
+# sample_points_attributed_wgtcat$aoi_id <- aoi$aoi_id
+# 
+# sample_points_output_variables <- c("raster_id", "aoi_id", "frame_id", "tpoly_id", "wgtcat_id", "sample_id", "sample_seed", "value", "weight")
+# sample_points_attributed_combined <- rbind(sample_points_attributed_thiessen[, sample_points_output_variables],
+#                                            sample_points_attributed_wgtcat[, sample_points_output_variables])
+# sample_points_output_path <- paste0(output_path,
+#                                     "/",
+#                                     "spatial",
+#                                     "/",
+#                                     "points",
+#                                     "_",
+#                                     simulation_seed,
+#                                     ".shp")
+# sf::st_write(sample_points_attributed_combined,
+#              dsn = sample_points_output_path,
+#              driver = "ESRI Shapefile",
+#              append = FALSE)
 
 ##### Results ####
 results_output_variables <- c("raster_id", "aoi_id", "sample_seed", "weighting", "n", "mean", "sd", "variance", "mean_true", "sd_true", "variance_true")

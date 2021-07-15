@@ -549,6 +549,128 @@ aoi_gen <- function(xmin,
   return(aoi_sf[, c("aoi_id", "aoi_seed")])
 }
 
+#' Generate stratification polygons
+#' @description Generate stratification polygons for a frame. If using \code{type = "partitioned"} and providing \code{landscape_raster} then the strata polygons will represent similar areas of the raster. If \code{type = "random"} then the strata will be randomly drawn Thiessen polygons within the frame.
+#' @param frame sf POLYGON or MULTIPOLYGON object. The maximum extent of the strata to return.
+#' @param n_strata Numeric. The number of strata to produce.
+#' @param type Character string. Must be either \code{"partitioned"} or \code{"random"}. If code\{"partitioned"} then \code{landscape_raster} must be provided. Defaults to \code{"partitioned"}.
+#' @param landscape_raster Optional RasterLayer object. Required if \code{type = "partitioned"}. Must have a value range of 0 to 1. Defaults to \code{"NULL"}.
+#' @param seed_number Optional numeric value. The seed number to use for generating the polygon stratum centroids if \code{type = "random"}. A random seed will be used if this is \code{NULL}. Defaults to \code{NULL}.
+#' @param seed_increment Optional numeric value. If attempting to produce polygons with \code{points_min} points from \code{points} in each polygon, this is the step to increment \code{seed_number} by on each attempt. Defaults to \code{100000}.
+strata_gen <- function(frame,
+                       n_strata = 2,
+                       type = "partitioned",
+                       landscape_raster = NULL,
+                       seed_number = NULL,
+                       seed_increment = 10000) {
+  if (!(c("sf") %in% class(frame))) {
+    stop("`frame` must be an sf polygon object")
+  } else if (!(sf::st_geometry_type(frame) %in% c("POLYGON", "MULTIPOLYGON"))) {
+    stop("`frame` must be an sf polygon object.")
+  }
+  
+  if (n_strata < 1) {
+    stop("`strata` must be a number greater than 1.")
+  }
+  
+  if (!(type %in% c("partitioned", "random"))) {
+    stop("`type` must be either 'partitioned' or 'random'.")
+  }
+  
+  if (!is.null(landscape_raster)) {
+    if (class(landscape_raster) != "RasterLayer") {
+      stop("`raster` must be of class RasterLayer.")
+    }
+  } else if (type == "partitioned") {
+    stop("`raster` must be provided when `type` = 'partitioned'")
+  }
+  
+  if (!is.null(seed_number)) {
+    if (!(class(seed_number) %in% c("numeric", "integer")) | length(seed_number) > 1) {
+      stop("`seed_number` must be a single numeric value")
+    }
+  } else {
+    seed_number <- sample(x = 1:9999999,
+                          size = 1)
+  }
+  
+  strata_polygons <- switch(type,
+                            "partitioned" = {
+                              # What's the value range for strata?
+                              strata_increment <- 1 / n_strata
+                              
+                              # Get a raster to mangle
+                              landscape_categorical <- landscape_raster
+                              
+                              # Convert from continuous values into categories
+                              # Note that we go from largest to smallest so that we don't accidentally overwrite
+                              # category 1 when we get to the highest number category which has an upper limit of 1
+                              for (category in n_strata:1) {
+                                current_stratum_min <- (category - 1) * strata_increment
+                                current_stratum_max <- category * strata_increment
+                                landscape_categorical[landscape_categorical >= current_stratum_min & landscape_categorical <= current_stratum_max] <- category
+                              }
+                              
+                              landscape_categorical_spdf <- raster::rasterToPolygons(x = landscape_categorical,
+                                                                                     dissolve = TRUE)
+                              landscape_categorical_sf <- methods::as(landscape_categorical_spdf,
+                                                                      "sf")
+                              landscape_categorical_sf$stratum_id <- landscape_categorical_sf$layer
+                              
+                              strata_sf <- sf::st_intersection(x = landscape_categorical_sf,
+                                                               y = frame)
+                              
+                              strata_sf[, c("stratum_id")]
+                            },
+                            "random" = {
+                              # Handle creating the envelope differently depending on if there's a raster or not
+                              # if (!is.null(landscape_raster)) {
+                              #   raster_blank <- landscape_raster
+                              #   raster_blank[raster_blank >= 0] <- 1
+                              #   raster_blank_spdf <- raster::rasterToPolygons(x = raster_blank,
+                              #                                                 dissolve = TRUE)
+                              #   boundary_sfc <- methods::as(raster_blank_spdf,
+                              #                               "sfc")
+                              # } else {
+                              # Roundabout, but I don't know how to convert from sf to sfc
+                              boundary_spdf <- methods::as(frame,
+                                                           "Spatial")
+                              boundary_sfc <- sf::st_as_sfc(boundary_spdf)
+                              # }
+                              
+                              
+                              strata_polygons <- thiessen_polygons_gen_random(frame = frame,
+                                                                              n_polygons = n_strata,
+                                                                              envelope = boundary_sfc,
+                                                                              seed_number = seed_number)
+                              
+                              # Not necessarily all the strata will be represented in the frame, so we'll
+                              # keep drawing until we get a version where that happens
+                              not_enough_strata <- nrow(strata_polygons) < n_strata
+                              
+                              while (not_enough_strata) {
+                                seed_number <- seed_number + seed_increment
+                                
+                                message(paste0("Not enough strata fell inside the frame. Attempting again with seed number ",
+                                               seed_number))
+                                
+                                strata_polygons <- thiessen_polygons_gen_random(frame = frame,
+                                                                                n_polygons = n_strata,
+                                                                                envelope = raster_boundary_sfc,
+                                                                                seed_number = seed_number)
+                                
+                                not_enough_strata <- nrow(strata_polygons) < n_strata
+                              }
+                              
+                              strata_polygons$stratum_id <- 1:n_strata
+                              
+                              strata_polygons[, c("stratum_id")]
+                            }
+  )
+  
+  strata_polygons
+}
+
 #' Make a single-part polygon (more) concave
 #' @param polygon An sf polygon object. The must not be multipart or have multiple polygons. It may already be concave.
 #' @param seed_number Optional numeric value. The seed number used to generate the coordinates of the new vertex. If \code{NULL} then a random number will be used. Defaults to \code{NULL}.

@@ -821,9 +821,9 @@ points_gen <- function(frame,
                        seed_number = NULL,
                        projection = NULL){
   if (!("sf" %in% class(frame))) {
-    stop("frame must be an sf object of geometry type 'POLYGON'")
-  } else if (sf::st_geometry_type(frame) != "POLYGON") {
-    stop("frame must be an sf object of geometry type 'POLYGON'")
+    stop("frame must be an sf object of geometry type 'POLYGON' or 'MULTIPOLYGON'")
+  } else if (!any(c("POLYGON", "MULTIPOLYGON") %in% sf::st_geometry_type(frame))) {
+    stop("frame must be an sf object of geometry type 'POLYGON' or 'MULTIPOLYGON'")
   }
   
   if (!(class(n_points) %in% c("numeric", "integer")) | length(n_points) > 1) {

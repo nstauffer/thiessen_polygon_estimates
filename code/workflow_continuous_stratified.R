@@ -387,7 +387,7 @@ sample_points_attributed_wgtcat_list <- lapply(X = sample_points_list,
                                                                               replacement = "")
                                                  
                                                  # Return only the desired variables
-                                                 sample_points[, c("sample_id", "sample_seed", "value", "frame_id", "wgtcat_id", "weight", "geometry")]
+                                                 sample_points[, c("sample_id", "sample_seed", "value", "wgtcat_id", "weight", "geometry")]
                                                })
 
 sample_points_attributed_wgtcat <- do.call(rbind,

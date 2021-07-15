@@ -10,32 +10,35 @@ sim_file <- "C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/code/
 # Simulation
 projection <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
 output_path <- paste0("C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/simulations/",
-                      "intensification_continuous_increasedpoints",
+                      "continuous/",
+                      "stratified/",
+                      "continuous_stratified",
                       "/output/")
 
 # Raster
 raster_type <- "continuous"
-raster_ncol <- 1000
-raster_nrow <- 1000
+raster_ncol <- 100
+raster_nrow <- 100
 raster_resolution = 1
-raster_autocorr_range = 50
+raster_autocorr_range = 10
 raster_mag_var = 10
 raster_nug = 0.2
 raster_mean = 1
 raster_rescale = TRUE
 
-
 # AOI
 aoi_n_vertices <- 6
 aoi_convex_hull <- TRUE
 
+# Strata
+n_strata <- 3
+strata_type <- "partitioned"
 
 # Sample
 frame_n_vertices <- 6
 frame_convex_hull <- TRUE
-
 sample_type <- "simple"
-n_sample_points <- 50
+n_sample_points <- 10
 sample_seeds <- 1:99
 
 # Thiessen polygons
@@ -52,6 +55,7 @@ percent_tolerance <- 5
 for (simulation_seed in (1 + sim_seed_offset):(n_sims + sim_seed_offset)) {
   raster_seed <- 420 * simulation_seed
   aoi_seed <- 1123 * simulation_seed
+  strata_seed <- 69 * simulation_seed
   frame_seed <- 111 * simulation_seed
   source(sim_file)
 }

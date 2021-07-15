@@ -367,6 +367,11 @@ sample_points_attributed_wgtcat_list <- lapply(X = sample_points_list,
                                                                           y = wgtcat_summary,
                                                                           by = "wgtcat_id")
                                                  
+                                                 # Weirdness with doubling up variable names
+                                                 names(wgtcat_polygons) <- gsub(names(wgtcat_polygons),
+                                                                                pattern = "\\.x$",
+                                                                                replacement = "")
+                                                 
                                                  # Calculate the weight for each wgtcat_id
                                                  wgtcat_polygons$weight <- wgtcat_polygons$area_m2 / wgtcat_polygons$n_points
                                                  

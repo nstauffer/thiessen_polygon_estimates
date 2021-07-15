@@ -134,90 +134,90 @@ strata_polygons$n_points[most_points_index] <- strata_polygons$n_points[most_poi
 
 # Create a design object for grts()
 base_design <- lapply(X = strata_polygons$n_points,
-              FUN = function(X) {
-                list(panel = c("1" = X),
-                     seltype = "Equal",
-                     over = 0)
-              })
+                      FUN = function(X) {
+                        list(panel = c("1" = X),
+                             seltype = "Equal",
+                             over = 0)
+                      })
 
 names(base_design) <- strata_polygons$stratum_id
 
 ##### Create points within the strata ####
 sample_points_list <- lapply(X = sample_seeds,
-                               strata = strata_polygons,
-                               design = base_design,
-                               sample_type = sample_type,
-                               projection = projection,
-                               raster = current_raster,
-                               FUN = function(X,
-                                              strata,
-                                              design,
-                                              sample_type,
-                                              projection,
-                                              raster){
-                                 sample_seed <- X
-                                 sample_points <- switch(sample_type,
-                                                         "simple" = {
-                                                           # To draw the appropriate number of points in each stratum
-                                                           points_list <- lapply(X = names(design),
-                                                                                 design = design,
-                                                                                 strata = strata,
-                                                                                 sample_seed = sample_seed,
-                                                                                 FUN = function(X, design, strata, sample_seed) {
-                                                                                   
-                                                                                   points_gen(frame = strata[strata$strata_id == X, ],
-                                                                                              sample_type = "simple",
-                                                                                              n_points = design[[X]][["panel"]],
-                                                                                              seed_number = sample_seed,
-                                                                                              projection = projection)
-                                                                                 })
-                                                           do.call(rbind,
-                                                                   points_list)
-                                                         },
-                                                         "balanced" = {
-                                                           set.seed(sample_seed)
-                                                           points <- spsurvey::grts(design = design,
-                                                                                    DesignID = "",
-                                                                                    type.frame = "area",
-                                                                                    src.frame = "sf.object",
-                                                                                    sf.object = strata,
-                                                                                    stratum = "stratum_id",
-                                                                                    shapefile = FALSE)
-                                                           
-                                                           if (!("sf" %in% class(points))) {
-                                                             points <- methods::as(points, "sf")
-                                                           }
-                                                           
-                                                           # Add our ID in the format *I* want
-                                                           points$sample_id <- paste0("sample_",
-                                                                                      seed_number,
-                                                                                      "-",
-                                                                                      1:nrow(points))
-                                                           
-                                                           points$sample_seed <- sample_seed
-                                                           
-                                                           points[, c("sample_id", "sample_seed")]
-                                                         })
-
-                                 
-                                 # Attribute them with raster values
-                                 # First we need them as an SPDF for raster::extract()
-                                 sample_points_spdf <- methods::as(sample_points,
-                                                                   "Spatial")
-                                 
-                                 # Then we get a vector of the values
-                                 raster_values <- raster::extract(x = raster,
-                                                                  y = sample_points_spdf)
-                                 
-                                 # And write them into the sf object!
-                                 sample_points$value <- raster_values
-                                 
-                                 # Add the metadata about which frame these go to
-                                 sample_points$frame_id <- unique(frame$frame_id)
-                                 
-                                 # Return the points
-                                 sample_points
-                               })
+                             strata = strata_polygons,
+                             design = base_design,
+                             sample_type = sample_type,
+                             projection = projection,
+                             raster = current_raster,
+                             FUN = function(X,
+                                            strata,
+                                            design,
+                                            sample_type,
+                                            projection,
+                                            raster){
+                               sample_seed <- X
+                               sample_points <- switch(sample_type,
+                                                       "simple" = {
+                                                         # To draw the appropriate number of points in each stratum
+                                                         points_list <- lapply(X = names(design),
+                                                                               design = design,
+                                                                               strata = strata,
+                                                                               sample_seed = sample_seed,
+                                                                               FUN = function(X, design, strata, sample_seed) {
+                                                                                 
+                                                                                 points_gen(frame = strata[strata$stratum_id == X, ],
+                                                                                            sample_type = "simple",
+                                                                                            n_points = design[[X]][["panel"]],
+                                                                                            seed_number = sample_seed,
+                                                                                            projection = projection)
+                                                                               })
+                                                         do.call(rbind,
+                                                                 points_list)
+                                                       },
+                                                       "balanced" = {
+                                                         set.seed(sample_seed)
+                                                         points <- spsurvey::grts(design = design,
+                                                                                  DesignID = "",
+                                                                                  type.frame = "area",
+                                                                                  src.frame = "sf.object",
+                                                                                  sf.object = strata,
+                                                                                  stratum = "stratum_id",
+                                                                                  shapefile = FALSE)
+                                                         
+                                                         if (!("sf" %in% class(points))) {
+                                                           points <- methods::as(points, "sf")
+                                                         }
+                                                         
+                                                         # Add our ID in the format *I* want
+                                                         points$sample_id <- paste0("sample_",
+                                                                                    seed_number,
+                                                                                    "-",
+                                                                                    1:nrow(points))
+                                                         
+                                                         points$sample_seed <- sample_seed
+                                                         
+                                                         points[, c("sample_id", "sample_seed")]
+                                                       })
+                               
+                               
+                               # Attribute them with raster values
+                               # First we need them as an SPDF for raster::extract()
+                               sample_points_spdf <- methods::as(sample_points,
+                                                                 "Spatial")
+                               
+                               # Then we get a vector of the values
+                               raster_values <- raster::extract(x = raster,
+                                                                y = sample_points_spdf)
+                               
+                               # And write them into the sf object!
+                               sample_points$value <- raster_values
+                               
+                               # Add the metadata about which frame these go to
+                               sample_points$frame_id <- unique(frame$frame_id)
+                               
+                               # Return the points
+                               sample_points
+                             })
 
 
 #### Generate Thiessen polygons ------------------------------------------------

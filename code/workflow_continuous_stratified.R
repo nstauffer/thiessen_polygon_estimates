@@ -211,10 +211,7 @@ sample_points_list <- lapply(X = sample_seeds,
                                
                                # And write them into the sf object!
                                sample_points$value <- raster_values
-                               
-                               # Add the metadata about which frame these go to
-                               sample_points$frame_id <- unique(frame$frame_id)
-                               
+
                                # Return the points
                                sample_points
                              })

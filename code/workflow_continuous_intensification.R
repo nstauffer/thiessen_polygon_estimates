@@ -34,7 +34,8 @@ source("C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/functions.
 # frame_n_vertices <- 6
 # frame_convex_hull <- TRUE
 # sample_type <- "simple"
-# n_sample_points <- 50
+# n_aoi_sample_points <- 10
+# n_int_sample_points <- 50
 # sample_seeds <- 1:199
 # 
 # # Thiessen polygons
@@ -112,7 +113,7 @@ sample_points_list_1 <- lapply(X = sample_seeds,
                                frame = aoi,
                                aoi = aoi,
                                sample_type = sample_type,
-                               n_points = n_sample_points,
+                               n_points = n_aoi_sample_points,
                                projection = projection,
                                raster = current_raster,
                                FUN = function(X,
@@ -183,7 +184,7 @@ sample_points_list_2 <- lapply(X = sample_seeds,
                                frame = frame,
                                aoi = aoi,
                                sample_type = sample_type,
-                               n_points = n_sample_points,
+                               n_points = n_int_sample_points,
                                projection = projection,
                                raster = current_raster,
                                FUN = function(X,

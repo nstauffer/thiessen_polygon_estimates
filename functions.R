@@ -777,18 +777,21 @@ concavify <- function(polygon,
 
 #' Generate weight category polygons
 #' @param polygons sf polygon object. Must contain each frame as an observation.
-#' @param aoi_index Numeric value. The index in \code{polygons} of the polygon acting as the area of interest or boundary for the intersection. The function will only return geometry that overlaps with the polygon at this index, discarding all geometry that consists only of the other polygons.
+#' @param aoi_index Optional numeric value. The index in \code{polygons} of the polygon acting as the area of interest or boundary for the intersection. The function will only return geometry that overlaps with the polygon at this index, discarding all geometry that consists only of the other polygons. If \code{NULL} then no filtering will happen. Defaults to \code{NULL}.
 #' @returns sf polygon object with the variables "wgtcat_id" containing the unique identifier for the weight categories and "area_m2" containing the area in meters squared (assuming that the projection is Albers Equal Area or other with meters as units).
 wgtcat_gen <- function(polygons,
                        aoi_index = 1){
   if (!("sf" %in% class(polygons))) {
     stop("polygons must be an sf object of geometry type 'POLYGON'")
-  } else if (!all(sf::st_geometry_type(polygons) %in% "POLYGON")) {
+  } else if (!all(sf::st_geometry_type(polygons) %in% c("POLYGON", "MULTIPOLYGON"))) {
     stop("polygons must be an sf object of geometry type 'POLYGON'")
   }
-  if (!(aoi_index %in% 1:nrow(polygons))) {
-    stop("aoi_index must refer to the index of one of the entries in polygons")
+  if (!is.null(aoi_index)) {
+    if (!(aoi_index %in% 1:nrow(polygons))) {
+      stop("aoi_index must refer to the index of one of the entries in polygons")
+    }
   }
+  
   
   # Intersect them to create weight category polygons
   wgtcat_polygons <- sf::st_intersection(polygons)

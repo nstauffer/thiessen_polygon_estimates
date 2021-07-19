@@ -1,4 +1,185 @@
-source("C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/workflow_multisample_oneframe_onethiessen_continuous.R")
+source("C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/functions.R")
+
+#### WILCOXON INTERPRETATION ####
+summarize_wilcoxon <- function(results,
+                               thresholds) {
+  if (class(results) != "data.frame") {
+    stop("`results` must be a data frame.")
+  }
+  if (!all(c("weighting", "p_value") %in% names(results))) {
+    stop("`results` must contain the variables 'weighting' and 'p_value'.")
+  }
+  if (!is.numeric(thresholds)) {
+    stop("`thresholds` must be numeric.")
+  }
+  if (any(thresholds > 1 | thresholds <= 0)) {
+    stop("All values in `thresholds` must be between 0 and 1.")
+  }
+  
+  # Create single-column data frames for each threshold indicating
+  # if the p value was above the threshold
+  checked_list <- lapply(X = thresholds,
+                         results = wilcoxon_results,
+                         FUN = function(X, results) {
+                           p_value_threshold <- X
+                           var_name <- paste0("p_value_above_",
+                                              p_value_threshold)
+                           check_vector <- results$p_value > p_value_threshold
+                           output <- data.frame("above_p_value" = check_vector)
+                           names(output) <- var_name
+                           output
+                         })
+  
+  checked_df <- do.call(cbind,
+                        checked_list)
+  
+  wilcoxon_results_checked <- cbind(wilcoxon_results,
+                                    checked_df)
+  
+  # Summarize by weighting approach
+  wilcoxon_checked_summary_list <- lapply(X = split(wilcoxon_results_checked,
+                                                    wilcoxon_results_checked$weighting),
+                                          p_value_thresholds = thresholds,
+                                          FUN = function(X, p_value_thresholds) {
+                                            current_results <- X
+                                            
+                                            n_observations <- nrow(current_results)
+                                            
+                                            output <- data.frame("weighting" = current_results$weighting[1])
+                                            
+                                            for (p_value_threshold in p_value_thresholds) {
+                                              current_var <- paste0("p_value_above_",
+                                                                    p_value_threshold)
+                                              output[[paste0("n_", current_var)]] <- sum(current_results[[current_var]])
+                                              output[[paste0("proportion_", current_var)]] <- sum(current_results[[current_var]]) / n_observations
+                                            }
+                                            
+                                            output
+                                          })
+  
+  wilcoxon_checked_summary <- do.call(rbind,
+                                      wilcoxon_checked_summary_list)
+}
+
+test <- summarize_wilcoxon(results = wilcoxon_results,
+                           thresholds = c(0.2, 0.1, 0.05, 0.01))
+
+p_value_thresholds <- c(0.2, 0.1, 0.05, 0.01)
+
+# Create single-column data frames for each threshold indicating
+# if the p value was above the threshold
+checked_list <- lapply(X = p_value_thresholds,
+                       results = wilcoxon_results,
+                       FUN = function(X, results) {
+                         p_value_threshold <- X
+                         var_name <- paste0("p_value_above_",
+                                            p_value_threshold)
+                         check_vector <- results$p_value > p_value_threshold
+                         output <- data.frame("above_p_value" = check_vector)
+                         names(output) <- var_name
+                         output
+                       })
+
+checked_df <- do.call(cbind,
+                      checked_list)
+
+wilcoxon_results_checked <- cbind(wilcoxon_results,
+                                  checked_df)
+
+# Summarize by weighting approach
+wilcoxon_checked_summary_list <- lapply(X = split(wilcoxon_results_checked,
+                                                  wilcoxon_results_checked$weighting),
+                                        p_value_thresholds = p_value_thresholds,
+                                        FUN = function(X, p_value_thresholds) {
+                                          current_results <- X
+                                          
+                                          n_observations <- nrow(current_results)
+                                          
+                                          output <- data.frame("weighting" = current_results$weighting[1])
+                                          
+                                          for (p_value_threshold in p_value_thresholds) {
+                                            current_var <- paste0("p_value_above_",
+                                                                  p_value_threshold)
+                                            output[[paste0("n_", current_var)]] <- sum(current_results[[current_var]])
+                                            output[[paste0("proportion_", current_var)]] <- sum(current_results[[current_var]]) / n_observations
+                                          }
+                                          
+                                          output
+                                        })
+
+wilcoxon_checked_summary <- do.call(rbind,
+                                    wilcoxon_checked_summary_list)
+
+#### TESTING WEIGHTING ####
+test_list <- lapply(X = sample_points_attributed_thiessen_list,
+                    FUN = function(X) {
+                      X$weight <- 1
+                      continuous_analysis(data = X,
+                                          alpha = 0.05)
+                    })
+test <- do.call(rbind,
+                test_list)
+
+identical(round(test$mean, digits = 6), round(test$mean_weighted, digits = 6))
+identical(round(test$sd, digits = 6), round(test$sd_weighted, digits = 6))
+identical(round(test$variance, digits = 6), round(test$variance_weighted, digits = 6))
+
+#### RASTER TO POLYGOJN FOR STRATA ####
+library(ggplot2)
+projection <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
+raster_ncol <- 100
+raster_nrow <- 100
+raster_resolution = 1
+raster_autocorr_range = 10
+raster_mag_var = 10
+raster_nug = 0.2
+raster_mean = 1
+raster_rescale = TRUE
+raster_seed <- 666
+
+landscape_raster <- NLMR::nlm_gaussianfield(ncol = raster_ncol,
+                                            nrow = raster_nrow,
+                                            resolution = raster_resolution,
+                                            autocorr_range = raster_autocorr_range,
+                                            mag_var = raster_mag_var,
+                                            nug = raster_nug,
+                                            mean = raster_mean,
+                                            user_seed = raster_seed,
+                                            rescale = raster_rescale)
+raster::projection(landscape_raster) <- projection
+raster_plotting_df <- data.frame(raster::rasterToPoints(landscape_raster))
+frame <- aoi_gen(xmax = raster_ncol,
+                 xmin = 0,
+                 ymax = raster_nrow,
+                 ymin = 0,
+                 n_vertices = 6,
+                 convex_hull = TRUE,
+                 seed_number = 112358)
+
+n_strata <- 3
+type <- "partitioned"
+landscape_raster <- landscape_raster
+seed_number <- NULL
+seed_increment <- 10000
+
+strata_polygons <- strata_gen(frame = frame,
+                              n_strata = n_strata,
+                              type = type,
+                              landscape_raster = landscape_raster,
+                              seed_number = seed_number,
+                              seed_increment = seed_increment)
+
+ggplot() +
+  # geom_raster(data = raster_plotting_df,
+  #             aes(x = x,
+  #                 y = y,
+  #                 fill = layer)) +
+  # geom_sf(data = frame,
+  #         alpha = 0.25) +
+  geom_sf(data = strata_polygons,
+          aes(fill = stratum_id),
+          alpha = 0.1) +
+  geom_sf(data = sample_points_list[[1]])
 
 #### RASTER BOUNDARY SFC ####
 projection <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
@@ -6,7 +187,7 @@ raster_boundary_coords <- data.frame(x = c(0, raster_ncol, raster_ncol, 0, 0),
                                      y = c(0, 0, raster_nrow, raster_nrow, 0))
 raster_boundary_sfc <- sf::st_sfc(sf::st_polygon(x = list(outer = as.matrix(raster_boundary_coords))))
 raster_boundary_sf <- sf::st_sf(raster_boundary_sfc,
-                    crs = projection)
+                                crs = projection)
 frame <- raster_boundary_sf
 
 ggplot() +
@@ -66,21 +247,21 @@ ggplot() +
 
 # Continuous
 ggplot() +
-  geom_raster(data = raster_plotting_df,
-              aes(x = x,
-                  y = y,
-                  fill = layer)) +
+  # geom_raster(data = raster_plotting_df,
+  #             aes(x = x,
+  #                 y = y,
+  #                 fill = layer)) +
   scale_fill_viridis_c() +
   # geom_sf(data = raster_boundary_sf,
   #         alpha = 0.25) +
   geom_sf(data = aoi,
           alpha = 0.25) +
-  geom_sf(data = wgtcat_polygons,
-          alpha = 0.25) +
+  # geom_sf(data = wgtcat_polygons,
+  #         alpha = 0.25) +
   # geom_sf(data = frame,
   #         alpha = 0.25) +
-  # geom_sf(data = thiessen_list[[3]],
-  #         alpha = 0.25) +
+  geom_sf(data = thiessen_list[[3]],
+          alpha = 0.25) +
   # geom_sf(data = thiessen_polygons,
   #         alpha = 0.25) +
   # geom_sf(data = thiessen_polygons_clipped,
@@ -378,8 +559,8 @@ potential_vertices <- sf::st_as_sf(x = coords,
 
 # Which of those are inside the polygon?
 concave_vertex_indices <- as.vector(sf::st_intersects(x = potential_vertices,
-                                      y = polygon,
-                                      sparse = FALSE))
+                                                      y = polygon,
+                                                      sparse = FALSE))
 
 # Keep only the inside-the-polygon points
 valid_concave_vertices <- potential_vertices[concave_vertex_indices, ]
@@ -415,7 +596,7 @@ coords_new <- data.frame(x_coord = x_coords_new,
 
 # Convert into a point sf object
 new_vertices <- sf::st_as_sf(x = coords_new,
-                     coords = c("x_coord", "y_coord"))
+                             coords = c("x_coord", "y_coord"))
 
 # Combine all the vertex points and cast them as a polygon
 concave_polygon <- sf::st_sf(sf::st_cast(sf::st_combine(new_vertices), "POLYGON"))
@@ -462,8 +643,8 @@ points <- switch(sample_type,
                  },
                  "balanced" = {
                    design <- list(None = list(panel = c("1" = n_points),
-                                                     seltype = "Equal",
-                                                     over = 0))
+                                              seltype = "Equal",
+                                              over = 0))
                    set.seed(seed_number)
                    points <- spsurvey::grts(design = design,
                                             DesignID = "",
@@ -474,7 +655,7 @@ points <- switch(sample_type,
                  },
                  "cluster" = {
                    set.seed(seed_number)
-
+                   
                  })
 
 # Convert from SPDF to sf

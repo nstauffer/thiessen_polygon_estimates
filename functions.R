@@ -803,7 +803,10 @@ wgtcat_gen <- function(polygons,
                                       })
   
   # Drop any that are just from the frames outside the AOI
-  wgtcat_polygons <- wgtcat_polygons[grepl(wgtcat_polygons$wgtcat_id, pattern = paste0("^", aoi_index)), ]
+  if (!is.null(aoi_index)) {
+    wgtcat_polygons <- wgtcat_polygons[grepl(wgtcat_polygons$wgtcat_id, pattern = paste0("^", aoi_index)), ]
+  }
+  
   
   # Add the areas
   wgtcat_polygons$area_m2 <- as.vector(sf::st_area(wgtcat_polygons))

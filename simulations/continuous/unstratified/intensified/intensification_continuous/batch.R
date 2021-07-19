@@ -15,10 +15,10 @@ output_path <- paste0("C:/Users/Nelson/Documents/Projects/thiessen_polygon_estim
 
 # Raster
 raster_type <- "continuous"
-raster_ncol <- 1000
-raster_nrow <- 1000
+raster_ncol <- 100
+raster_nrow <- 100
 raster_resolution = 1
-raster_autocorr_range = 50
+raster_autocorr_range = 10
 raster_mag_var = 10
 raster_nug = 0.2
 raster_mean = 1
@@ -34,7 +34,8 @@ aoi_convex_hull <- TRUE
 frame_n_vertices <- 6
 frame_convex_hull <- TRUE
 sample_type <- "simple"
-n_sample_points <- 25
+n_aoi_sample_points <- 10
+n_int_sample_points <- 50
 sample_seeds <- 1:99
 
 # Thiessen polygons

@@ -9,8 +9,8 @@ simulations_path <- "C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimat
 # simulations <- c("intensification_continuous",
 #                  "intensification_continuous_midthiessen",
 #                  "intensification_continuous_increasedthiessen")
-simulations <- c("intensification_categorical",
-                 "intensification_categorical_increasedthiessen")
+simulations <- c("intensification_continuous_reducedpoints",
+                 "intensification_continuous_increasedpoints")
 
 # Read in the results from all the simulations!
 results <- read_results(simulations = simulations,
@@ -19,13 +19,13 @@ results <- read_results(simulations = simulations,
 
 # Get the tolerance info
 summary_5percent <- tolerance_summary(data = results,
-                                      variable = "proportion",
-                                      comparison_variable = "proportion_true",
+                                      variable = "mean",
+                                      comparison_variable = "mean_true",
                                       grouping_variables = c("sim_name", "weighting"),
                                       percent_tolerance = 5)
 summary_10percent <- tolerance_summary(data = results,
-                                       variable = "proportion",
-                                       comparison_variable = "proportion_true",
+                                       variable = "mean",
+                                       comparison_variable = "mean_true",
                                        grouping_variables = c("sim_name", "weighting"),
                                        percent_tolerance = 10)
 summary <- rbind(summary_5percent,

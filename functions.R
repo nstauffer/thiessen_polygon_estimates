@@ -1336,3 +1336,66 @@ read_results <- function(simulations,
   
   return(results)
 }
+
+#' Summarize Wilcoxon results by p value thresholds
+#' @param results Data frame. The results of Wilcoxon ranked sign tests, one result per row, with variables for the weighting scheme (\code{"weighting"}) and the p value (\code{"p_value"}).
+#' @param thresholds Numeric vector. The thresholds to compare the p values against. All values must be between 0 and 1. Defaults to \code{c(0.2, 0.1, 0.05, 0.01)}.
+summarize_wilcoxon <- function(results,
+                               thresholds = c(0.2, 0.1, 0.05, 0.01)) {
+  if (class(results) != "data.frame") {
+    stop("`results` must be a data frame.")
+  }
+  if (!all(c("weighting", "p_value") %in% names(results))) {
+    stop("`results` must contain the variables 'weighting' and 'p_value'.")
+  }
+  if (!is.numeric(thresholds)) {
+    stop("`thresholds` must be numeric.")
+  }
+  if (any(thresholds > 1 | thresholds <= 0)) {
+    stop("All values in `thresholds` must be between 0 and 1.")
+  }
+  
+  # Create single-column data frames for each threshold indicating
+  # if the p value was above the threshold
+  checked_list <- lapply(X = thresholds,
+                         results = wilcoxon_results,
+                         FUN = function(X, results) {
+                           p_value_threshold <- X
+                           var_name <- paste0("p_value_above_",
+                                              p_value_threshold)
+                           check_vector <- results$p_value > p_value_threshold
+                           output <- data.frame("above_p_value" = check_vector)
+                           names(output) <- var_name
+                           output
+                         })
+  
+  checked_df <- do.call(cbind,
+                        checked_list)
+  
+  wilcoxon_results_checked <- cbind(wilcoxon_results,
+                                    checked_df)
+  
+  # Summarize by weighting approach
+  wilcoxon_checked_summary_list <- lapply(X = split(wilcoxon_results_checked,
+                                                    wilcoxon_results_checked$weighting),
+                                          p_value_thresholds = thresholds,
+                                          FUN = function(X, p_value_thresholds) {
+                                            current_results <- X
+                                            
+                                            n_observations <- nrow(current_results)
+                                            
+                                            output <- data.frame("weighting" = current_results$weighting[1])
+                                            
+                                            for (p_value_threshold in p_value_thresholds) {
+                                              current_var <- paste0("p_value_above_",
+                                                                    p_value_threshold)
+                                              output[[paste0("n_", current_var)]] <- sum(current_results[[current_var]])
+                                              output[[paste0("proportion_", current_var)]] <- sum(current_results[[current_var]]) / n_observations
+                                            }
+                                            
+                                            output
+                                          })
+  
+  wilcoxon_checked_summary <- do.call(rbind,
+                                      wilcoxon_checked_summary_list)
+}

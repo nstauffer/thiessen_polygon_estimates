@@ -148,7 +148,7 @@ thiessen_polygons_gen_clustered <- function(frame,
   
   # Put them into a number of clusters matching the Thiessen polygon count
   cluster_membership <- cutree(tree = hierarchical_clusters,
-                               k = thiessen_n_polygons)
+                               k = n_polygons)
   
   # Write that info into the points object
   points$cluster <- cluster_membership

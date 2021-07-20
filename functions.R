@@ -66,7 +66,7 @@ thiessen_polygons_gen_fixed <- function(centroids,
     thiessen_polygons_raw <- sf::st_voronoi(points_multipoint,
                                             envelope = envelope)
   }
-
+  
   # This is making sure that we only have polygon features
   # No idea why this is necessary, but without it all kinds of geometry errors pop up at clipping
   thiessen_polygons_raw <- sf::st_collection_extract(thiessen_polygons_raw,
@@ -75,7 +75,7 @@ thiessen_polygons_gen_fixed <- function(centroids,
   # Convert the polygons to an sf object
   # Finally, something comfortingly familiar
   thiessen_polygons <- sf::st_sf(thiessen_polygons_raw)
-
+  
   # Clip to sample frame
   thiessen_polygons_clipped <- sf::st_intersection(x = thiessen_polygons,
                                                    y = frame)
@@ -131,7 +131,7 @@ thiessen_polygons_gen_random <- function(frame,
     if (nrow(points) < (n_polygons * points_min)) {
       stop(paste0("There are too few points available to put ",
                   points_min,
-                   " points in each of ",
+                  " points in each of ",
                   n_polygons,
                   " Thiessen polygons"))
     }
@@ -216,7 +216,7 @@ thiessen_polygons_gen_random <- function(frame,
       tpoly_summary <- rbind(tpoly_summary,
                              missing_tpoly_summary)
     }
-
+    
     # So, if the polygons didn't have enough points each, increment the seed number and try again
     # over and over until it actually pans out
     while (!all(tpoly_summary[["n_points"]] >= points_min)) {

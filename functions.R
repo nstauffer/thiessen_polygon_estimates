@@ -89,6 +89,111 @@ thiessen_polygons_gen_fixed <- function(centroids,
   return(thiessen_polygons_clipped)
 }
 
+#' @param frame An sf polygon or multipolygon object. This is the clipping boundary which will be applied to the otherise "infinite" Thiessen/Voronoi polygons.
+#' @param points An sf point object. These will be broken into clusters and one Thiessen polygon drawn for the centroid of each cluster.
+#' @param n_polygons Numeric value. The number of Thiessen polygons to draw within the frame. This is also the number of clusters to break \code{points} into.
+#' @param envelope An sfc polygon object. This will be the outer envelope for the Thiessen polygons before they're clipped to \code{frame}. This will only be applied if it's larger than the default envelope in \code{sf::st_voronoi()}. If \code{NULL} then the default envelope will be used. Defaults to \code{NULL}.
+#' @param projection Optional character string or CRS object. The coordinate reference system for the output. May be a PROJ4 string or a CRS object. Defaults to the projection of \code{frame}.
+#' @param verbose Logical. If \code{TRUE} then the function will return diagnostic messages as it runs. Defaults to \code(FALSE}.)
+thiessen_polygons_gen_clustered <- function(frame,
+                                            points,
+                                            n_polygons,
+                                            envelope = NULL,
+                                            projection = NULL,
+                                            verbose = FALSE) {
+  # Sanitization
+  if (!("sf" %in% class(frame))) {
+    stop("frame must be an sf polygon object")
+  } else if (!all(sf::st_geometry_type(frame) %in% c("POLYGON", "MULTIPOLYGON"))){
+    stop("frame must be an sf polygon object")
+  }
+  if (!("sf" %in% class(points))) {
+    stop("points must be an sf points object")
+  } else if (!all(sf::st_geometry_type(points) %in% c("POINT"))){
+    stop("points must be an sf points object")
+  }
+  if (!is.null(envelope)) {
+    if (!("sfc" %in% class(envelope))) {
+      stop("envelope must be an sfc polygon object")
+    } else if (!all(sf::st_geometry_type(envelope) %in% c("POLYGON", "MULTIPOLYGON"))){
+      stop("envelope must be an sfc polygon object")
+    }
+  }
+  
+  if (is.null(projection)) {
+    projection <- sf::st_crs(frame)
+  }
+  frame <- sf::st_transform(frame,
+                            crs = projection)
+  points <- sf::st_transform(points,
+                             crs = projection)
+  
+  # Make an envelope from the frame
+  if (is.null(envelope)) {
+    envelope <- sf::st_as_sfc(sf::st_bbox(aoi,
+                                          crs = projection))
+  }
+  
+  
+  # Get the point coordinates. We'll need them to calculate distances
+  points_coords <- as.data.frame(sf::st_coordinates(points))
+  names(points_coords) <- c("x", "y")
+  
+  # Get a distance matrix
+  points_distance_matrix <- geosphere::distm(x = points_coords)
+  
+  # Do some hierarchical clustering based on the distances
+  hierarchical_clusters <- hclust(as.dist(m = points_distance_matrix),
+                                  method = "complete")
+  
+  # Put them into a number of clusters matching the Thiessen polygon count
+  cluster_membership <- cutree(tree = hierarchical_clusters,
+                               k = thiessen_n_polygons)
+  
+  # Write that info into the points object
+  points$cluster <- cluster_membership
+  points_coords$cluster <- cluster_membership
+  
+  # For each cluster, make an sf object for the centroid
+  centroid_sf_list <- lapply(X = split(points_coords, points_coords$cluster),
+                             projection = projection,
+                             FUN = function(X,
+                                            projection) {
+                               coords <- X
+                               current_cluster <- coords$cluster[1]
+                               centroid_x <- mean(coords$x)
+                               centroid_y <- mean(coords$y)
+                               
+                               centroid_df <- data.frame(cluster = current_cluster,
+                                                         x = centroid_x,
+                                                         y = centroid_y)
+                               
+                               coords_matrix <- as.matrix(centroid_df[, c("x", "y")])
+                               
+                               centroid_sfc <- sf::st_point(x = coords_matrix)
+                               
+                               # For some reason, I have to do this to feed into sf::st_sf()
+                               # instead of just giving it the sfc object
+                               centroid_sfc_geometry <- sf::st_geometry(centroid_sfc)
+                               
+                               centroid_sf <- sf::st_sf(centroid_sfc_geometry,
+                                                        crs = projection)
+                               
+                               centroid_sf$cluster <- current_cluster
+                               
+                               centroid_sf
+                             })
+  
+  centroids_sf <- do.call(rbind,
+                          centroid_sf_list)
+  
+  tpolys <- thiessen_polygons_gen_fixed(centroids = centroids_sf,
+                                        frame = aoi,
+                                        envelope = envelope)
+  
+  tpolys
+}
+
 #' Create Thiessen/Voronoi polygons from a set of points and bounding polygons
 #' @description Generate Thiessen/Voronoi polygons for a set of points and clip the results using a set of polygons
 #' @param frame An sf polygon or multipolygon object. This is the clipping boundary which will be applied to the otherise "infinite" Thiessen/Voronoi polygons.

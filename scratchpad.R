@@ -23,19 +23,24 @@ sample_points <- points_gen(frame = aoi,
                             n_points = 16,
                             seed_number = 70)
 
+test <- thiessen_polygons_gen_clustered(frame = aoi,
+                                        points = sample_points,
+                                        n_polygons = 5)
+
 ggplot() + 
   geom_sf(data = aoi) +
+  geom_sf(data = test) +
   geom_sf(data = sample_points)
 
 # Get the point coordinates. We'll need them to calcualte distances
-sample_points_coords <- as.data.frame(sf::st_coordinates(sample_points))
-names(sample_points_coords) <- c("x", "y")
+points_coords <- as.data.frame(sf::st_coordinates(points))
+names(points_coords) <- c("x", "y")
 
 # Get a distance matrix
-sample_points_distance_matrix <- geosphere::distm(x = sample_points_coords)
+points_distance_matrix <- geosphere::distm(x = points_coords)
 
 # Do some hierarchical clustering based on the distances
-hierarchical_clusters <- hclust(as.dist(m = sample_points_distance_matrix),
+hierarchical_clusters <- hclust(as.dist(m = points_distance_matrix),
                                 method = "complete")
 
 # Put them into a number of clusters matching the Thiessen polygon count
@@ -43,16 +48,16 @@ cluster_membership <- cutree(tree = hierarchical_clusters,
                              k = thiessen_n_polygons)
 
 # Write that info into the points object
-sample_points$cluster <- cluster_membership
-sample_points_coords$cluster <- cluster_membership
+points$cluster <- cluster_membership
+points_coords$cluster <- cluster_membership
 
 ggplot() + 
   geom_sf(data = aoi) +
-  geom_sf(data = sample_points,
+  geom_sf(data = points,
           aes(color = cluster_membership))
 
 # For each cluster, make an sf object for the centroid
-centroid_sf_list <- lapply(X = split(sample_points_coords, sample_points_coords$cluster),
+centroid_sf_list <- lapply(X = split(points_coords, points_coords$cluster),
                          projection = projection,
                          FUN = function(X,
                                         projection) {
@@ -86,7 +91,7 @@ centroids_sf <- do.call(rbind,
 
 ggplot() + 
   geom_sf(data = aoi) +
-  geom_sf(data = sample_points,
+  geom_sf(data = points,
           aes(color = cluster_membership)) +
   geom_sf(data = centroids_sf,
           color = "red")
@@ -98,7 +103,7 @@ ggplot() +
   geom_sf(data = aoi) +
   geom_sf(data = tpolys,
           alpha = 0.25) +
-  geom_sf(data = sample_points,
+  geom_sf(data = points,
           aes(color = cluster_membership)) +
   geom_sf(data = centroids_sf,
           color = "red")

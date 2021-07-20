@@ -1,4 +1,107 @@
 source("C:/Users/Nelson/Documents/Projects/thiessen_polygon_estimates/functions.R")
+library(ggplot2)
+
+#### CLUSTER-BASED THIESSEN POLYGONS ####
+raster_ncol <- 100
+raster_nrow <- 100
+
+thiessen_n_polygons <- 3
+
+projection <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
+
+# Get a polygon and points
+aoi <- aoi_gen(xmin = 0,
+               xmax = raster_ncol,
+               ymin = 0,
+               ymax = raster_nrow,
+               n_vertices = 10,
+               convex_hull = TRUE,
+               seed_number = 420)
+
+sample_points <- points_gen(frame = aoi,
+                            sample_type = "simple",
+                            n_points = 16,
+                            seed_number = 70)
+
+ggplot() + 
+  geom_sf(data = aoi) +
+  geom_sf(data = sample_points)
+
+# Get the point coordinates. We'll need them to calcualte distances
+sample_points_coords <- as.data.frame(sf::st_coordinates(sample_points))
+names(sample_points_coords) <- c("x", "y")
+
+# Get a distance matrix
+sample_points_distance_matrix <- geosphere::distm(x = sample_points_coords)
+
+# Do some hierarchical clustering based on the distances
+hierarchical_clusters <- hclust(as.dist(m = sample_points_distance_matrix),
+                                method = "complete")
+
+# Put them into a number of clusters matching the Thiessen polygon count
+cluster_membership <- cutree(tree = hierarchical_clusters,
+                             k = thiessen_n_polygons)
+
+# Write that info into the points object
+sample_points$cluster <- cluster_membership
+sample_points_coords$cluster <- cluster_membership
+
+ggplot() + 
+  geom_sf(data = aoi) +
+  geom_sf(data = sample_points,
+          aes(color = cluster_membership))
+
+# For each cluster, make an sf object for the centroid
+centroid_sf_list <- lapply(X = split(sample_points_coords, sample_points_coords$cluster),
+                         projection = projection,
+                         FUN = function(X,
+                                        projection) {
+                           coords <- X
+                           current_cluster <- coords$cluster[1]
+                           centroid_x <- mean(coords$x)
+                           centroid_y <- mean(coords$y)
+                           
+                           centroid_df <- data.frame(cluster = current_cluster,
+                                                     x = centroid_x,
+                                                     y = centroid_y)
+                           
+                           coords_matrix <- as.matrix(centroid_df[, c("x", "y")])
+                           
+                           centroid_sfc <- sf::st_point(x = coords_matrix)
+                           
+                           # For some reason, I have to do this to feed into sf::st_sf()
+                           # instead of just giving it the sfc object
+                           centroid_sfc_geometry <- sf::st_geometry(centroid_sfc)
+                           
+                           centroid_sf <- sf::st_sf(centroid_sfc_geometry,
+                                                    crs = projection)
+                           
+                           centroid_sf$cluster <- current_cluster
+                           
+                           centroid_sf
+                         })
+
+centroids_sf <- do.call(rbind,
+                        centroid_sf_list)
+
+ggplot() + 
+  geom_sf(data = aoi) +
+  geom_sf(data = sample_points,
+          aes(color = cluster_membership)) +
+  geom_sf(data = centroids_sf,
+          color = "red")
+
+tpolys <- thiessen_polygons_gen_fixed(centroids = centroids_sf,
+                                      frame = aoi)
+
+ggplot() + 
+  geom_sf(data = aoi) +
+  geom_sf(data = tpolys,
+          alpha = 0.25) +
+  geom_sf(data = sample_points,
+          aes(color = cluster_membership)) +
+  geom_sf(data = centroids_sf,
+          color = "red")
 
 #### WILCOXON INTERPRETATION ####
 summarize_wilcoxon <- function(results,

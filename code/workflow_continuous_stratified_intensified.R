@@ -115,7 +115,7 @@ strata_polygons <- strata_gen(frame = aoi,
                               type = strata_type,
                               landscape_raster = current_raster,
                               seed_number = strata_seed,
-                              seed_increment = 10000)
+                              seed_increment = 1000)
 
 strata_polygons$area_m2 <- as.vector(sf::st_area(strata_polygons))
 strata_polygons$aoi_id <- aoi$aoi_id
@@ -341,7 +341,7 @@ sample_points_attributed_thiessen_list_list <- lapply(X = sample_points_list,
                                                       points_min = thiessen_minimum_sample,
                                                       # The envelope has to be an sfc, not sf, object for sf::st_voron
                                                       envelope = raster_boundary_sfc,
-                                                      seed_increment = 100000,
+                                                      seed_increment = 1000,
                                                       use_albers = TRUE,
                                                       verbose = TRUE,
                                                       FUN = function(X,

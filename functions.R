@@ -457,7 +457,7 @@ landscape_gen_continuous <- function(max,
 #' @param n_vertices Numeric value. The number of vertices to initially draw. If \code{convex_hull} is \code{TRUE} then this may not be the final number of vertices. Defaults to \code{3}.
 #' @param convex_hull Logical. If \code{TRUE} then the function \code{sf::st_convex_hull()} will be applied to the polygon to ensure that it is convex and does not cross itself. Defaults to \code{TRUE}.
 #' @param seed_number Optional numeric value. The seed number to use for generating the raster. A random seed will be used if this is \code{NULL}. Defaults to \code{NULL}.
-#' @param projection Optional character string or CRS object. The coordinate reference system for the raster. May be a PROJ4 string or a CRS object. Defaults to Albers Equal Area.
+#' @param projection Optional character string or CRS object. The coordinate reference system for the output. May be a PROJ4 string or a CRS object. Defaults to Albers Equal Area.
 #' @returns An sf polygon object with a variable called \code{seed_number} containing the seed number the polygon was generated from.
 
 aoi_gen <- function(xmin,

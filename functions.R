@@ -850,7 +850,7 @@ points_gen <- function(frame,
   }
   
   if (is.null(projection)) {
-    projection <- sf::st_crs(polygon)
+    projection <- sf::st_crs(frame)
   } else if (class(projection) == "character") {
     projection <- sp::CRS(projection)
   } else if (!("CRS" %in% class(projection))) {

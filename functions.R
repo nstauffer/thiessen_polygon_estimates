@@ -138,7 +138,7 @@ thiessen_polygons_gen_clustered <- function(frame,
   
   # Make an envelope from the frame
   if (is.null(envelope)) {
-    envelope <- sf::st_as_sfc(sf::st_bbox(aoi,
+    envelope <- sf::st_as_sfc(sf::st_bbox(frame,
                                           crs = projection))
   }
   

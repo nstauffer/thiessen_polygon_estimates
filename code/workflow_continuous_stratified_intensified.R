@@ -128,13 +128,14 @@ int_polygon <- aoi_gen(xmax = raster_ncol,
                        n_vertices = int_n_vertices,
                        convex_hull = int_convex_hull,
                        seed_number = int_seed)
+int_polygon <- sf::st_intersection(x = int_polygon,
+                                   y = aoi)
 int_polygon$raster_id <- raster_metadata$raster_id
 int_polygon$aoi_id <- aoi$aoi_id
 
 # Because the geometry column is coming out names "aoi_sfc" but we don't want that
 int_polygon$geometry <- sf::st_geometry(int_polygon)
 sf::st_geometry(int_polygon) <- "geometry"
-
 
 #### Generate sampling points ------------------------------------------------
 ##### Allocate the effort to the strata proportionally by area ####

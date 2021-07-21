@@ -20,19 +20,19 @@ thiessen_polygons_gen_fixed <- function(centroids,
   # Sanitization
   if (!("sf" %in% class(centroids))) {
     stop("`centroids` must be an sf points object")
-  } else if (!all(sf::st_geometry_type(centroids) %in% c("POINT"))){
+  } else if (!all(sf::st_geometry_type(centroids) %in% c("POINT"))) {
     stop("`centroids` must be an sf points object")
   }
   if (!("sf" %in% class(frame))) {
     stop("`frame` must be an sf polygon object")
-  } else if (!all(sf::st_geometry_type(frame) %in% c("POLYGON", "MULTIPOLYGON"))){
+  } else if (!all(sf::st_geometry_type(frame) %in% c("POLYGON", "MULTIPOLYGON"))) {
     stop("`frame` must be an sf polygon object")
   }
   
   if (!is.null(envelope)) {
     if (!("sfc" %in% class(envelope))) {
       stop("`envelope` must be an sfc polygon object")
-    } else if (!all(sf::st_geometry_type(envelope) %in% c("POLYGON", "MULTIPOLYGON"))){
+    } else if (!all(sf::st_geometry_type(envelope) %in% c("POLYGON", "MULTIPOLYGON"))) {
       stop("`envelope` must be an sfc polygon object")
     }
   }
@@ -109,12 +109,12 @@ thiessen_polygons_gen_clustered <- function(frame,
   # Sanitization
   if (!("sf" %in% class(frame))) {
     stop("`frame` must be an sf polygon object")
-  } else if (!all(sf::st_geometry_type(frame) %in% c("POLYGON", "MULTIPOLYGON"))){
+  } else if (!all(sf::st_geometry_type(frame) %in% c("POLYGON", "MULTIPOLYGON"))) {
     stop("`frame` must be an sf polygon object")
   }
   if (!("sf" %in% class(points))) {
     stop("`points`` must be an sf points object")
-  } else if (!all(sf::st_geometry_type(points) %in% c("POINT"))){
+  } else if (!all(sf::st_geometry_type(points) %in% c("POINT"))) {
     stop("`points` must be an sf points object")
   }
   if (n_polygons > nrow(points)) {
@@ -123,7 +123,7 @@ thiessen_polygons_gen_clustered <- function(frame,
   if (!is.null(envelope)) {
     if (!("sfc" %in% class(envelope))) {
       stop("`envelope` must be an sfc polygon object")
-    } else if (!all(sf::st_geometry_type(envelope) %in% c("POLYGON", "MULTIPOLYGON"))){
+    } else if (!all(sf::st_geometry_type(envelope) %in% c("POLYGON", "MULTIPOLYGON"))) {
       stop("`envelope` must be an sfc polygon object")
     }
   }
@@ -222,14 +222,14 @@ thiessen_polygons_gen_random <- function(frame,
                                          seed_number = NULL,
                                          seed_increment = 100000,
                                          use_albers = TRUE,
-                                         verbose = FALSE){
+                                         verbose = FALSE) {
   # Define Alber's Equal Area CRS
   projection <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
   
   # Sanitization
   if (!("sf" %in% class(frame))) {
     stop("`frame` must be an sf polygon object")
-  } else if (!all(sf::st_geometry_type(frame) %in% c("POLYGON", "MULTIPOLYGON"))){
+  } else if (!all(sf::st_geometry_type(frame) %in% c("POLYGON", "MULTIPOLYGON"))) {
     stop("`frame` must be an sf polygon object")
   }
   if (!(class(n_polygons) %in% c("numeric", "integer")) | length(n_polygons) > 1) {
@@ -403,7 +403,7 @@ landscape_gen_categorical <- function(categories,
                                       ncol,
                                       nrow,
                                       seed_number = NULL,
-                                      projection = NULL){
+                                      projection = NULL) {
   if (class(ncol) != "numeric" | length(ncol) > 1) {
     stop("`ncol` must be a single numeric value")
   }
@@ -472,7 +472,7 @@ landscape_gen_continuous <- function(max,
                                      mean = NULL,
                                      sd = NULL,
                                      seed_number = NULL,
-                                     projection = NULL){
+                                     projection = NULL) {
   if (class(max) != "numeric" | length(max) > 1) {
     stop("`max` must be a single numeric value")
   }
@@ -733,20 +733,11 @@ strata_gen <- function(frame,
                               strata_sf[, c("stratum_id")]
                             },
                             "random" = {
-                              # Handle creating the envelope differently depending on if there's a raster or not
-                              # if (!is.null(landscape_raster)) {
-                              #   raster_blank <- landscape_raster
-                              #   raster_blank[raster_blank >= 0] <- 1
-                              #   raster_blank_spdf <- raster::rasterToPolygons(x = raster_blank,
-                              #                                                 dissolve = TRUE)
-                              #   boundary_sfc <- methods::as(raster_blank_spdf,
-                              #                               "sfc")
-                              # } else {
-                              # Roundabout, but I don't know how to convert from sf to sfc
+
                               boundary_spdf <- methods::as(frame,
                                                            "Spatial")
                               boundary_sfc <- sf::st_as_sfc(boundary_spdf)
-                              # }
+
                               
                               
                               strata_polygons <- thiessen_polygons_gen_random(frame = frame,
@@ -890,7 +881,7 @@ concavify <- function(polygon,
 #' @param aoi_index Optional numeric value. The index in \code{polygons} of the polygon acting as the area of interest or boundary for the intersection. The function will only return geometry that overlaps with the polygon at this index, discarding all geometry that consists only of the other polygons. If \code{NULL} then no filtering will happen. Defaults to \code{NULL}.
 #' @returns sf polygon object with the variables "wgtcat_id" containing the unique identifier for the weight categories and "area_m2" containing the area in meters squared (assuming that the projection is Albers Equal Area or other with meters as units).
 wgtcat_gen <- function(polygons,
-                       aoi_index = 1){
+                       aoi_index = 1) {
   if (!("sf" %in% class(polygons))) {
     stop("`polygons` must be an sf object of geometry type 'POLYGON'")
   } else if (!all(sf::st_geometry_type(polygons) %in% c("POLYGON", "MULTIPOLYGON"))) {
@@ -908,7 +899,7 @@ wgtcat_gen <- function(polygons,
   
   # Add in a unique ID for them
   wgtcat_polygons$wgtcat_id <- sapply(X = wgtcat_polygons$origins,
-                                      FUN = function(X){
+                                      FUN = function(X) {
                                         paste(X, collapse = "-")
                                       })
   
@@ -935,7 +926,7 @@ points_gen <- function(frame,
                        sample_type = "simple",
                        n_points,
                        seed_number = NULL,
-                       projection = NULL){
+                       projection = NULL) {
   if (!("sf" %in% class(frame))) {
     stop("`frame` must be an sf object of geometry type 'POLYGON' or 'MULTIPOLYGON'")
   } else if (!any(c("POLYGON", "MULTIPOLYGON") %in% sf::st_geometry_type(frame))) {
@@ -1026,7 +1017,7 @@ points_gen <- function(frame,
 goodman_cis <- function(counts,
                         alpha = 0.2,
                         chisq = "best",
-                        verbose = FALSE){
+                        verbose = FALSE) {
   if (!is.numeric(counts) | length(counts) < 2) {
     stop("`counts` must be a numeric vector with at least two values")
   }
@@ -1063,11 +1054,15 @@ goodman_cis <- function(counts,
   # According to Goodman, A and B are both valid options for the chi-square quantile
   # So the user can specify which they want or just ask for the one that minimizes the confidence intervals
   chisq_quantile <- switch(chisq,
-                           "A" = {chisq_quantiles["A"]},
-                           "B" = {chisq_quantiles["B"]},
+                           "A" = {
+                             chisq_quantiles["A"]
+                             },
+                           "B" = {
+                             chisq_quantiles["B"]
+                             },
                            "best" = {
                              pick <- which.min(chisq_quantiles)
-                             if (verbose){
+                             if (verbose) {
                                switch(names(chisq_quantiles)[pick],
                                       "A" = message("The chi-square quantile calculation that will provide the tighter confidence intervals is A, the upper alpha X 100-th percentage point of the chi-square distribution with k - 1 degrees of freedom"),
                                       "B" = message("The chi-square quantile calculation that will provide the tighter confidence intervals is B, the upper alpha / k X 100-th percentage point of the chi-square distribution with 1 degree of freedom"))
@@ -1117,7 +1112,7 @@ goodman_cis <- function(counts,
 #' @returns A wide-format data frame summarizing for each value in \code{possible_values}: number of instances of the value, the sum of weights for all instances of the value, the proportion of the population represented by those values, the weighted proportion, and the Goodman's confidence intervals for both proportions.
 categorical_analysis <- function(data,
                                  possible_values,
-                                 alpha = 0.2){
+                                 alpha = 0.2) {
   # Sanitize
   data_variables <- names(data)
   if (!("value" %in% data_variables)) {
@@ -1140,7 +1135,7 @@ categorical_analysis <- function(data,
                                  data$value)
   # Summarize for each value
   data_summary_list <- lapply(X = data_categorical_list,
-                              FUN = function(X){
+                              FUN = function(X) {
                                 data.frame(value = unique(X$value),
                                            n = nrow(X),
                                            weight_sum = sum(X$weight))
@@ -1254,7 +1249,7 @@ weighted_variance <- function(values,
 tolerance_test <- function(data,
                            variable,
                            comparison_variable,
-                           percent_tolerance = 5){
+                           percent_tolerance = 5) {
   if (class(data) != "data.frame") {
     stop("`data` must be a data frame")
   }
@@ -1288,7 +1283,7 @@ tolerance_summary <- function(data,
                               variable,
                               comparison_variable,
                               grouping_variables = NULL,
-                              percent_tolerance = 5){
+                              percent_tolerance = 5) {
   if (class(data) != "data.frame") {
     stop("`data` must be a data frame")
   }
@@ -1305,7 +1300,7 @@ tolerance_summary <- function(data,
     stop("`percent_tolerance` must be a value between 0 and 100")
   }
   missing_grouping_variables <- grouping_variables[!(grouping_variables %in% names(data))]
-  if (length(missing_grouping_variables) > 0){
+  if (length(missing_grouping_variables) > 0) {
     stop(paste0("The following variables are missing from data: ", paste(missing_grouping_variables, collapse = ", ")))
   }
   
@@ -1325,7 +1320,7 @@ tolerance_summary <- function(data,
     # How many sims were within the tolerance?
     within_tolerance_count <- sum(data[[var_name]])
     # What's the proportion within the tolerance?
-    proportion_within_tolerance = within_tolerance_count / n_observations
+    proportion_within_tolerance <- within_tolerance_count / n_observations
     # Gimme those results!
     output <- data.frame(n_observations = n_observations,
                          percent_tolerance = percent_tolerance,
@@ -1334,7 +1329,7 @@ tolerance_summary <- function(data,
   } else {
     split_list <- lapply(X = grouping_variables,
                          data = data,
-                         FUN = function(X, data){
+                         FUN = function(X, data) {
                            data[[X]]
                          })
     data_list <- split(x = data,
@@ -1343,7 +1338,7 @@ tolerance_summary <- function(data,
     tolerance_list <- lapply(X = data_list,
                              percent_tolerance = percent_tolerance,
                              grouping_variables = grouping_variables,
-                             FUN = function(X, percent_tolerance, grouping_variables){
+                             FUN = function(X, percent_tolerance, grouping_variables) {
                                # How many sims are we looking at?
                                n_observations <- nrow(X)
                                # Which variable has the info about whether the tolerance was met or not?
@@ -1351,7 +1346,7 @@ tolerance_summary <- function(data,
                                # How many sims were within the tolerance?
                                within_tolerance_count <- sum(X[[var_name]])
                                # What's the proportion within the tolerance?
-                               proportion_within_tolerance = within_tolerance_count / n_observations
+                               proportion_within_tolerance <- within_tolerance_count / n_observations
                                # Gimme those results!
                                output <- data.frame(n_observations = n_observations,
                                                     percent_tolerance = percent_tolerance,
@@ -1376,7 +1371,7 @@ tolerance_summary <- function(data,
 #' @param simulations_path Character string. The filepath to where the folders matching the name(s) in \code{simulations} are stored.
 #' @returns The combined results of all the simulations with additional fields identifying which simulation run and which simulation the results belong to.
 read_results <- function(simulations,
-                         simulations_path){
+                         simulations_path) {
   if (!is.character(simulations)) {
     stop("`simulations` must be a character vector of at least length one")
   }
@@ -1390,7 +1385,7 @@ read_results <- function(simulations,
   # Read in the results from all the simulations!
   results_list <- lapply(X = simulations,
                          simulations_path = simulations_path,
-                         FUN = function(X, simulations_path){
+                         FUN = function(X, simulations_path) {
                            # Just so this is more readable
                            sim_name <- X
                            
@@ -1411,7 +1406,7 @@ read_results <- function(simulations,
                            
                            # Read in the results
                            results_list <- lapply(X = results_files,
-                                                  FUN = function(X){
+                                                  FUN = function(X) {
                                                     # Get a unique ID from the filename's suffix (output_id_suffix in the sim script)
                                                     uid <- stringr::str_extract(X,
                                                                                 pattern = "_\\d+\\.(csv|CSV)$")

@@ -1,3 +1,8 @@
+# Required packages (these are called explicitly by namespace and do not need to be attached)
+# library(geosphere)
+# library(sf)
+# library(spsurvey)
+
 #' Create Thiessen/Voronoi polygons from a set of points and bounding polygons
 #' @description Generate Thiessen/Voronoi polygons for a set of points and clip the results using a set of polygons
 #' @param centroids An sf points object. These points are used as centroids for the Thiessen/Voronoi polygons.

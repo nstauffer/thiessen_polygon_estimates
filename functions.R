@@ -13,27 +13,27 @@
 thiessen_polygons_gen_fixed <- function(centroids,
                                         frame,
                                         envelope = NULL,
-                                        use_albers = TRUE){
+                                        use_albers = TRUE) {
   # Define Alber's Equal Area CRS
   aea_proj <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
   
   # Sanitization
   if (!("sf" %in% class(centroids))) {
-    stop("centroids must be an sf points object")
+    stop("`centroids` must be an sf points object")
   } else if (!all(sf::st_geometry_type(centroids) %in% c("POINT"))){
-    stop("centroids must be an sf points object")
+    stop("`centroids` must be an sf points object")
   }
   if (!("sf" %in% class(frame))) {
-    stop("frame must be an sf polygon object")
+    stop("`frame` must be an sf polygon object")
   } else if (!all(sf::st_geometry_type(frame) %in% c("POLYGON", "MULTIPOLYGON"))){
-    stop("frame must be an sf polygon object")
+    stop("`frame` must be an sf polygon object")
   }
   
   if (!is.null(envelope)) {
     if (!("sfc" %in% class(envelope))) {
-      stop("envelope must be an sfc polygon object")
+      stop("`envelope` must be an sfc polygon object")
     } else if (!all(sf::st_geometry_type(envelope) %in% c("POLYGON", "MULTIPOLYGON"))){
-      stop("envelope must be an sfc polygon object")
+      stop("`envelope` must be an sfc polygon object")
     }
   }
   
@@ -108,20 +108,23 @@ thiessen_polygons_gen_clustered <- function(frame,
                                             verbose = FALSE) {
   # Sanitization
   if (!("sf" %in% class(frame))) {
-    stop("frame must be an sf polygon object")
+    stop("`frame` must be an sf polygon object")
   } else if (!all(sf::st_geometry_type(frame) %in% c("POLYGON", "MULTIPOLYGON"))){
-    stop("frame must be an sf polygon object")
+    stop("`frame` must be an sf polygon object")
   }
   if (!("sf" %in% class(points))) {
-    stop("points must be an sf points object")
+    stop("`points`` must be an sf points object")
   } else if (!all(sf::st_geometry_type(points) %in% c("POINT"))){
-    stop("points must be an sf points object")
+    stop("`points` must be an sf points object")
+  }
+  if (n_polygons > nrow(points)) {
+    stop("`n_polygons` must be less than the number of observations in `points`")
   }
   if (!is.null(envelope)) {
     if (!("sfc" %in% class(envelope))) {
-      stop("envelope must be an sfc polygon object")
+      stop("`envelope` must be an sfc polygon object")
     } else if (!all(sf::st_geometry_type(envelope) %in% c("POLYGON", "MULTIPOLYGON"))){
-      stop("envelope must be an sfc polygon object")
+      stop("`envelope` must be an sfc polygon object")
     }
   }
   
@@ -225,18 +228,18 @@ thiessen_polygons_gen_random <- function(frame,
   
   # Sanitization
   if (!("sf" %in% class(frame))) {
-    stop("frame must be an sf polygon object")
+    stop("`frame` must be an sf polygon object")
   } else if (!all(sf::st_geometry_type(frame) %in% c("POLYGON", "MULTIPOLYGON"))){
-    stop("frame must be an sf polygon object")
+    stop("`frame` must be an sf polygon object")
   }
   if (!(class(n_polygons) %in% c("numeric", "integer")) | length(n_polygons) > 1) {
-    stop("n_points must be a single numeric value")
+    stop("`n_points` must be a single numeric value")
   }
   if (!is.null(points)) {
     if (!("sf" %in% class(points))) {
-      stop("points must be an sf points object")
+      stop("`points` must be an sf points object")
     } else if (!all(sf::st_geometry_type(points) %in% c("POINT"))){
-      stop("points must be an sf points object")
+      stop("`points` must be an sf points object")
     }
     if (nrow(points) < (n_polygons * points_min)) {
       stop(paste0("There are too few points available to put ",
@@ -248,7 +251,7 @@ thiessen_polygons_gen_random <- function(frame,
   }
   if (!is.null(seed_number)) {
     if (!(class(seed_number) %in% c("numeric", "integer")) | length(seed_number) > 1) {
-      stop("seed_number must be a single numeric value")
+      stop("`seed_number` must be a single numeric value")
     }
   } else {
     seed_number <- sample(x = 1:9999999,
@@ -404,15 +407,15 @@ landscape_gen_categorical <- function(categories,
                                       seed_number = NULL,
                                       projection = NULL){
   if (class(ncol) != "numeric" | length(ncol) > 1) {
-    stop("ncol must be a single numeric value")
+    stop("`ncol` must be a single numeric value")
   }
   if (class(nrow) != "numeric" | length(nrow) > 1) {
-    stop("nrow must be a single numeric value")
+    stop("`nrow` must be a single numeric value")
   }
   
   if (!is.null(seed_number)) {
     if (!(class(seed_number) %in% c("numeric", "integer")) | length(seed_number) > 1) {
-      stop("seed_number must be a single numeric value")
+      stop("`seed_number` must be a single numeric value")
     }
   } else {
     seed_number <- sample(x = 1:9999999,
@@ -426,7 +429,7 @@ landscape_gen_categorical <- function(categories,
   } else if (class(projection) == "character") {
     projection <- sp::CRS(projection)
   } else if (!("CRS" %in% class(projection))) {
-    stop("projection must either be a valid PROJ4 string or CRS object")
+    stop("`projection`` must either be a valid PROJ4 string or CRS object")
   }
   
   # Set the seed number
@@ -473,17 +476,17 @@ landscape_gen_continuous <- function(max,
                                      seed_number = NULL,
                                      projection = NULL){
   if (class(max) != "numeric" | length(max) > 1) {
-    stop("max must be a single numeric value")
+    stop("`max` must be a single numeric value")
   }
   if (class(min) != "numeric" | length(min) > 1) {
-    stop("min must be a single numeric value")
+    stop("`min` must be a single numeric value")
   }
   if (max < min) {
-    stop("max must be greater than min")
+    stop("`max` must be greater than min")
   }
   
   if (!(distribution %in% c("normal", "uniform"))) {
-    stop("distribution must be either 'normal' or 'uniform'")
+    stop("`distribution` must be either 'normal' or 'uniform'")
   }
   
   if (distribution == "normal") {
@@ -498,15 +501,15 @@ landscape_gen_continuous <- function(max,
   }
   
   if (class(ncol) != "numeric" | length(ncol) > 1) {
-    stop("ncol must be a single numeric value")
+    stop("`ncol` must be a single numeric value")
   }
   if (class(nrow) != "numeric" | length(nrow) > 1) {
-    stop("nrow must be a single numeric value")
+    stop("`nrow` must be a single numeric value")
   }
   
   if (!is.null(seed_number)) {
     if (!(class(seed_number) %in% c("numeric", "integer")) | length(seed_number) > 1) {
-      stop("seed_number must be a single numeric value")
+      stop("`seed_number` must be a single numeric value")
     }
   } else {
     seed_number <- sample(x = 1:9999999,
@@ -520,7 +523,7 @@ landscape_gen_continuous <- function(max,
   } else if (class(projection) == "character") {
     projection <- sp::CRS(projection)
   } else if (!("CRS" %in% class(projection))) {
-    stop("projection must either be a valid PROJ4 string or CRS object")
+    stop("`projection` must either be a valid PROJ4 string or CRS object")
   }
   
   # Set the seed number if specified
@@ -579,27 +582,27 @@ aoi_gen <- function(xmin,
                     seed_number = NULL,
                     projection = NULL) {
   if (class(xmax) != "numeric" | length(xmax) > 1) {
-    stop("xmax must be a single numeric value")
+    stop("`xmax` must be a single numeric value")
   }
   if (class(xmin) != "numeric" | length(xmin) > 1) {
-    stop("xmin must be a single numeric value")
+    stop("`xmin` must be a single numeric value")
   }
   if (xmax < xmin) {
-    stop("xmax must be greater than xmin")
+    stop("`xmax` must be greater than xmin")
   }
   if (class(ymax) != "numeric" | length(ymax) > 1) {
-    stop("ymax must be a single numeric value")
+    stop("`ymax` must be a single numeric value")
   }
   if (class(ymin) != "numeric" | length(ymin) > 1) {
-    stop("ymin must be a single numeric value")
+    stop("`ymin` must be a single numeric value")
   }
   if (ymax < ymin) {
-    stop("ymax must be greater than ymin")
+    stop("`ymax` must be greater than ymin")
   }
   
   if (!is.null(seed_number)) {
     if (!(class(seed_number) %in% c("numeric", "integer")) | length(seed_number) > 1) {
-      stop("seed_number must be a single numeric value")
+      stop("`seed_number` must be a single numeric value")
     }
   } else {
     seed_number <- sample(x = 1:9999999,
@@ -613,7 +616,7 @@ aoi_gen <- function(xmin,
   } else if (class(projection) == "character") {
     projection <- sp::CRS(projection)
   } else if (!("CRS" %in% class(projection))) {
-    stop("projection must either be a valid PROJ4 string or CRS object")
+    stop("`projection` must either be a valid PROJ4 string or CRS object")
   }
   
   # Set the seed for x coordinates first
@@ -787,14 +790,14 @@ strata_gen <- function(frame,
 concavify <- function(polygon,
                       seed_number = NULL) {
   if (!("sf" %in% class(polygon))) {
-    stop("polygon must be an sf object of geometry type 'POLYGON'")
+    stop("`polygon` must be an sf object of geometry type 'POLYGON'")
   } else if (sf::st_geometry_type(polygon) != "POLYGON") {
-    stop("polygon must be an sf object of geometry type 'POLYGON'")
+    stop("`polygon` must be an sf object of geometry type 'POLYGON'")
   }
   
   if (!is.null(seed_number)) {
     if (!(class(seed_number) %in% c("numeric", "integer")) | length(seed_number) > 1) {
-      stop("seed_number must be a single numeric value")
+      stop("`seed_number` must be a single numeric value")
     }
   } else {
     seed_number <- sample(x = 1:9999999,
@@ -891,13 +894,13 @@ concavify <- function(polygon,
 wgtcat_gen <- function(polygons,
                        aoi_index = 1){
   if (!("sf" %in% class(polygons))) {
-    stop("polygons must be an sf object of geometry type 'POLYGON'")
+    stop("`polygons` must be an sf object of geometry type 'POLYGON'")
   } else if (!all(sf::st_geometry_type(polygons) %in% c("POLYGON", "MULTIPOLYGON"))) {
-    stop("polygons must be an sf object of geometry type 'POLYGON'")
+    stop("`polygons` must be an sf object of geometry type 'POLYGON'")
   }
   if (!is.null(aoi_index)) {
     if (!(aoi_index %in% 1:nrow(polygons))) {
-      stop("aoi_index must refer to the index of one of the entries in polygons")
+      stop("`aoi_index` must refer to the index of one of the entries in polygons")
     }
   }
   
@@ -936,22 +939,22 @@ points_gen <- function(frame,
                        seed_number = NULL,
                        projection = NULL){
   if (!("sf" %in% class(frame))) {
-    stop("frame must be an sf object of geometry type 'POLYGON' or 'MULTIPOLYGON'")
+    stop("`frame` must be an sf object of geometry type 'POLYGON' or 'MULTIPOLYGON'")
   } else if (!any(c("POLYGON", "MULTIPOLYGON") %in% sf::st_geometry_type(frame))) {
-    stop("frame must be an sf object of geometry type 'POLYGON' or 'MULTIPOLYGON'")
+    stop("`frame` must be an sf object of geometry type 'POLYGON' or 'MULTIPOLYGON'")
   }
   
   if (!(class(n_points) %in% c("numeric", "integer")) | length(n_points) > 1) {
-    stop("n_points must be a single numeric value")
+    stop("`n_points` must be a single numeric value")
   }
   
   if (!(sample_type %in% c("simple", "balanced", "cluster"))) {
-    stop("sample_type must be 'simple', 'balanced', or 'cluster'")
+    stop("`sample_type` must be 'simple', 'balanced', or 'cluster'")
   }
   
   if (!is.null(seed_number)) {
     if (!(class(seed_number) %in% c("numeric", "integer")) | length(seed_number) > 1) {
-      stop("seed_number must be a single numeric value")
+      stop("`seed_number` must be a single numeric value")
     }
   } else {
     seed_number <- sample(x = 1:9999999,
@@ -963,7 +966,7 @@ points_gen <- function(frame,
   } else if (class(projection) == "character") {
     projection <- sp::CRS(projection)
   } else if (!("CRS" %in% class(projection))) {
-    stop("projection must either be a valid PROJ4 string or CRS object")
+    stop("`projection` must either be a valid PROJ4 string or CRS object")
   }
   # Reproject
   frame <- sf::st_transform(x = frame,
@@ -1027,11 +1030,11 @@ goodman_cis <- function(counts,
                         chisq = "best",
                         verbose = FALSE){
   if (!is.numeric(counts) | length(counts) < 2) {
-    stop("counts must be a numeric vector with at least two values")
+    stop("`counts` must be a numeric vector with at least two values")
   }
   
   if (!(chisq %in% c("A", "B", "best"))) {
-    stop("The only valid values for chisq are 'A', 'B', and 'best'.")
+    stop("`chisq` must be 'A', 'B', or 'best'.")
   }
   
   # Goodman describes the upper and lower bounds with the equations:
@@ -1120,18 +1123,18 @@ categorical_analysis <- function(data,
   # Sanitize
   data_variables <- names(data)
   if (!("value" %in% data_variables)) {
-    stop("The variable 'value' must be present in data and contain the value for each observation")
+    stop("The variable 'value' must be present in `data` and contain the value for each observation")
   }
   if (!("weight" %in% data_variables)) {
-    stop("The variable 'weight' must be present in data and contain the weight for each observation")
+    stop("The variable 'weight' must be present in `data` and contain the weight for each observation")
   }
   if (!all(data$value %in% possible_values)) {
-    stop("possible_values does not contain all values that appear in data")
+    stop("`possible_values` does not contain all values that appear in data")
   }
   if (class(alpha) != "numeric") {
-    stop("alpha must be a numeric value between 0 and 1")
+    stop("`alpha` must be a numeric value between 0 and 1")
   } else if (alpha <= 0 | alpha >= 1) {
-    stop("alpha must be a numeric value between 0 and 1")
+    stop("`alpha` must be a numeric value between 0 and 1")
   }
   
   # Split the points by value for summary
@@ -1255,10 +1258,10 @@ tolerance_test <- function(data,
                            comparison_variable,
                            percent_tolerance = 5){
   if (class(data) != "data.frame") {
-    stop("data must be a data frame")
+    stop("`data` must be a data frame")
   }
   if (nrow(data) < 1) {
-    stop("data must contain at least one row of values")
+    stop("`data` must contain at least one row of values")
   }
   if (!(variable %in% names(data))) {
     stop(paste0("The variable ", variable, " is missing from data"))
@@ -1267,7 +1270,7 @@ tolerance_test <- function(data,
     stop(paste0("The variable ", comparison_variable, " is missing from data"))
   }
   if (percent_tolerance < 0 | percent_tolerance > 100) {
-    stop("percent_tolerance must be a value between 0 and 100")
+    stop("'percent_tolerance' must be a value between 0 and 100")
   }
   
   proportion_tolerance <- percent_tolerance / 100
@@ -1289,10 +1292,10 @@ tolerance_summary <- function(data,
                               grouping_variables = NULL,
                               percent_tolerance = 5){
   if (class(data) != "data.frame") {
-    stop("data must be a data frame")
+    stop("`data` must be a data frame")
   }
   if (nrow(data) < 1) {
-    stop("data must contain at least one row of values")
+    stop("`data` must contain at least one row of values")
   }
   if (!(variable %in% names(data))) {
     stop(paste0("The variable ", variable, " is missing from data"))
@@ -1301,7 +1304,7 @@ tolerance_summary <- function(data,
     stop(paste0("The variable ", comparison_variable, " is missing from data"))
   }
   if (percent_tolerance < 0 | percent_tolerance > 100) {
-    stop("percent_tolerance must be a value between 0 and 100")
+    stop("`percent_tolerance` must be a value between 0 and 100")
   }
   missing_grouping_variables <- grouping_variables[!(grouping_variables %in% names(data))]
   if (length(missing_grouping_variables) > 0){
@@ -1377,13 +1380,13 @@ tolerance_summary <- function(data,
 read_results <- function(simulations,
                          simulations_path){
   if (!is.character(simulations)) {
-    stop("simulations must be a character vector of at least length one")
+    stop("`simulations` must be a character vector of at least length one")
   }
   if (!is.character(simulations_path)) {
-    stop("simulations_path must be a character string")
+    stop("`simulations_path` must be a character string")
   }
   if (length(simulations_path) > 1) {
-    stop("simulations_path must be a character string")
+    stop("`simulations_path` must be a character string")
   }
   
   # Read in the results from all the simulations!

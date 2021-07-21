@@ -295,7 +295,6 @@ thiessen_polygons_gen_random <- function(frame,
   thiessen_polygons <- thiessen_polygons_gen_fixed(centroids = centroids,
                                                    frame = frame,
                                                    envelope = envelope,
-                                                   seed_number = seed_number,
                                                    use_albers = FALSE)
   
   # Get the final variables in there
@@ -348,7 +347,6 @@ thiessen_polygons_gen_random <- function(frame,
       thiessen_polygons <- thiessen_polygons_gen_fixed(centroids = centroids,
                                                        frame = frame,
                                                        envelope = envelope,
-                                                       seed_number = seed_number,
                                                        use_albers = FALSE)
       
       

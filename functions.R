@@ -1247,7 +1247,7 @@ weighted_variance <- function(values,
 
 #' Check whether results are within a certain tolerance of the true value
 #' @param data Data frame. Must contain the variables \code{variable} and \code{comparison_variable}.
-#' @param varaible Character string. The name of the variable in \code{data} containing the values to check against the tolerance.
+#' @param variable Character string. The name of the variable in \code{data} containing the values to check against the tolerance.
 #' @param comparison_variable Character string. The name of the variable in \code{data} containing the values to to use to calculate the tolerance.
 #' @param percent_tolerance Numeric. The percent difference from the value in \code{comparison_variable} that its paired value in \code{variable} is allowed to be.
 #' @returns Logical vector. The value is \code{TRUE} for any index where the value in \code{variable} was within the permitted tolerance and \code{FALSE} for all other indices.

@@ -86,7 +86,7 @@ thiessen_polygons_gen_fixed <- function(centroids,
                                                    y = frame)
   
   # Add in a unique ID for each polygon
-  thiessen_polygons_clipped$polygon_unique_id <- 1:nrow(thiessen_polygons_clipped)
+  thiessen_polygons_clipped$polygon_unique_id <- seq_len(thiessen_polygons_clipped)
   
   # Add in the areas for the polygons
   thiessen_polygons_clipped$area_m2 <- as.vector(sf::st_area(x = thiessen_polygons_clipped))
@@ -897,7 +897,7 @@ wgtcat_gen <- function(polygons,
     stop("`polygons` must be an sf object of geometry type 'POLYGON'")
   }
   if (!is.null(aoi_index)) {
-    if (!(aoi_index %in% 1:nrow(polygons))) {
+    if (!(aoi_index %in% seq_len(nrow(polygons)))) {
       stop("`aoi_index` must refer to the index of one of the entries in polygons")
     }
   }
@@ -1007,7 +1007,7 @@ points_gen <- function(frame,
   points$sample_id <- paste0("sample_",
                              seed_number,
                              "-",
-                             1:nrow(points))
+                             seq_len(nrow(points)))
   
   points$sample_seed <- seed_number
   

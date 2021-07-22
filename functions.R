@@ -238,7 +238,7 @@ thiessen_polygons_gen_random <- function(frame,
   if (!is.null(points)) {
     if (!("sf" %in% class(points))) {
       stop("`points` must be an sf points object")
-    } else if (!all(sf::st_geometry_type(points) %in% c("POINT"))){
+    } else if (!all(sf::st_geometry_type(points) %in% c("POINT"))) {
       stop("`points` must be an sf points object")
     }
     if (nrow(points) < (n_polygons * points_min)) {

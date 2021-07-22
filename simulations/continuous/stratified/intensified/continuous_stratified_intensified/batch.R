@@ -59,6 +59,7 @@ percent_tolerance <- 5
 #### SIMULATE ------------------------------------------------
 # Run the sims
 for (simulation_seed in (1 + sim_seed_offset):(n_sims + sim_seed_offset)) {
+  message(paste0("Simulation seed is ", simulation_seed))
   raster_seed <- 420 * simulation_seed
   aoi_seed <- 1123 * simulation_seed
   strata_seed <- 69 * simulation_seed
